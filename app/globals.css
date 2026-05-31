@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+	/* Editorial color palette inspired by the design */
+	--color-accent: #E8530E;
+	--color-accent-light: #FF6B2C;
+	--color-accent-dark: #C44409;
+	--color-cream: #F5F0EB;
+	--color-cream-dark: #E8E0D8;
+	--color-charcoal: #1A1A1A;
+	--color-charcoal-light: #2A2A2A;
+	--color-warm-gray: #8A8279;
+	--color-warm-gray-light: #B5AEA6;
+
+	/* Typography scale */
+	--font-display: 'Playfair Display', Georgia, serif;
+	--font-body: 'Inter', system-ui, sans-serif;
+
+	/* Animations */
+	--animate-fade-up: fade-up 0.8s ease both;
+	--animate-fade-in: fade-in 0.8s ease both;
+	--animate-marquee: marquee 25s linear infinite;
+
+	/* Spacing */
+	--spacing-section: 8rem;
+	--spacing-section-sm: 5rem;
+}
+
+/* Base styles */
+html {
+	scroll-behavior: smooth;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+body {
+	font-family: var(--font-body);
+	color: var(--color-charcoal);
+	background-color: #ffffff;
+}
+
+/* Selection color */
+::selection {
+	background-color: var(--color-accent);
+	color: #ffffff;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+	width: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--color-cream);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--color-warm-gray);
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--color-charcoal);
+}
+
+/* Display heading utility */
+.heading-display {
+	font-family: var(--font-display);
+	font-weight: 700;
+	line-height: 0.95;
+	letter-spacing: -0.02em;
+}
+
+.heading-display-italic {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-weight: 500;
+	line-height: 0.95;
+	letter-spacing: -0.01em;
+}
+
+/* Smooth image placeholder */
+.image-placeholder {
+	background: linear-gradient(135deg, var(--color-cream-dark) 0%, var(--color-warm-gray-light) 100%);
+}
+
+/* Horizontal rule accent */
+.hr-accent {
+	height: 3px;
+	background-color: var(--color-accent);
+	border: none;
+}
+
+/* Link hover animation */
+.link-underline {
+	position: relative;
+	display: inline-block;
+}
+
+.link-underline::after {
+	content: '';
+	position: absolute;
+	bottom: -2px;
+	left: 0;
+	width: 0;
+	height: 1.5px;
+	background-color: currentColor;
+	transition: width 0.3s ease;
+}
+
+.link-underline:hover::after {
+	width: 100%;
+}
+
+/* Noise texture overlay for dark sections */
+.noise-overlay {
+	position: relative;
+}
+
+.noise-overlay::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	opacity: 0.03;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+	pointer-events: none;
+	z-index: 1;
+}
+
+/* Keyframes for CSS animations */
+@keyframes fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(30px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes marquee {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-50%);
+	}
+}
