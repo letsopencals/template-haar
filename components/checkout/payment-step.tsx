@@ -19,9 +19,9 @@ export function PaymentStep() {
 			transition={{ duration: 0.3 }}
 			className="space-y-6"
 		>
-			{selectedProvider === 'stripe' && paymentData.client_secret ? (
+			{selectedProvider === 'stripe' && paymentData.clientSecret ? (
 				<StripePayment
-					clientSecret={paymentData.client_secret}
+					clientSecret={paymentData.clientSecret}
 					stripeAccountId={paymentData.stripeAccountId}
 					onSuccess={(piId) => handleSubmitCheckout(piId)}
 					onError={(msg) => setError(msg)}
