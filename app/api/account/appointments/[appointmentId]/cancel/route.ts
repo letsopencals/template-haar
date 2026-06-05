@@ -1,5 +1,5 @@
-import { appointmentCancel } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { AppointmentService } from '@opencals/storefront-sdk';
 import { requireAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -12,17 +12,12 @@ export async function PUT(
 	if (auth.error) return auth.error;
 
 	try {
-		const response = await appointmentCancel({
+		const { data } = await AppointmentService.cancel({
 			path: { appointmentId },
-			headers: auth.headers,
 			body: { notifyCustomer: true },
+			headers: auth.headers,
 		});
-		if (response.error) {
-			const errData = response.error as { message?: string } | undefined;
-			const message = errData?.message ?? 'Failed to cancel appointment';
-			return NextResponse.json({ error: message }, { status: 400 });
-		}
-		return NextResponse.json(response.data);
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Appointment cancel error:', err);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

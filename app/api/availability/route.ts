@@ -1,5 +1,5 @@
-import { productGetCurrentAvailabilities } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { ProductService } from '@opencals/storefront-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -15,16 +15,11 @@ export async function GET(request: NextRequest) {
 	}
 
 	try {
-		const response = await productGetCurrentAvailabilities({
+		const { data } = await ProductService.getCurrentAvailabilities({
 			path: { productId },
 			query: { date, timezone, staffMemberId, locationId },
 		});
-
-		if (response.error) {
-			return NextResponse.json({ error: 'Failed to fetch availability' }, { status: 500 });
-		}
-
-		return NextResponse.json(response.data);
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Availability API error:', err);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

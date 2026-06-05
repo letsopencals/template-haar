@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
-import { Product, productList } from '@opencals/storefront-sdk';
-import { siteConfig } from '@/lib/site-config';
+import type { Product } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { ProductService } from '@opencals/storefront-sdk';
+import { siteConfig } from '@/lib/site-config';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const base = siteConfig.url;
@@ -14,19 +15,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	];
 
 	try {
-		const response = await productList({query: {take: 50}});
-		if (!response.error && response.data) {
-			const products = response.data.data as Product[];
-			const productRoutes: MetadataRoute.Sitemap = products
-			.flatMap((p: Product) => p.variants as Product[])
-			.map((p) => ({
-				url: `${base}/booking/${p.slug}`,
-				lastModified: new Date(),
-				changeFrequency: 'weekly' as const,
-				priority: 0.8,
-			}));
-			return [...staticRoutes, ...productRoutes];
-		}
+		const { data: response } = await ProductService.list({ query: { take: 50 } });
+		const products = response?.data as Product[];
+		const productRoutes: MetadataRoute.Sitemap = products
+		.flatMap((p: Product) => p.variants as Product[])
+		.map((p) => ({
+			url: `${base}/booking/${p.slug}`,
+			lastModified: new Date(),
+			changeFrequency: 'weekly' as const,
+			priority: 0.8,
+		}));
+		return [...staticRoutes, ...productRoutes];
 	} catch {
 		// SDK not available — return static routes only
 	}

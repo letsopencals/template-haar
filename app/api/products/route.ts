@@ -1,23 +1,13 @@
-import { productList } from '@opencals/storefront-sdk';
-import '@/lib/opencals'; // ensure SDK is initialized
+import '@/lib/opencals';
+import { ProductService } from '@opencals/storefront-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
 	const locationId = request.nextUrl.searchParams.get('locationId') ?? undefined;
 
 	try {
-		const response = await productList({
-			query: { take: 50, locationId },
-		});
-
-		if (response.error) {
-			return NextResponse.json(
-				{ error: 'Failed to fetch products' },
-				{ status: 500 },
-			);
-		}
-
-		return NextResponse.json(response.data);
+		const { data } = await ProductService.list({ query: { take: 50, locationId } });
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Products API error:', err);
 		return NextResponse.json(

@@ -1,9 +1,6 @@
-import {
-	appointmentCreate,
-	cartCreateOrGet,
-	cartAddItem,
-} from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { AppointmentService, CartService } from '@opencals/storefront-sdk';
+import { getAccessToken } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -20,8 +17,11 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		const token = await getAccessToken();
+		const authHeaders = { Authorization: `Bearer ${token ?? ''}` };
+
 		// 1. Create appointment
-		const appointmentResponse = await appointmentCreate({
+		const { data: appointment } = await AppointmentService.create({
 			body: {
 				slot: {
 					productId: slot.productId,
@@ -34,48 +34,21 @@ export async function POST(request: NextRequest) {
 				},
 				numberOfAttendees: numberOfAttendees ?? 1,
 			},
+			headers: authHeaders,
 		});
-
-		if (appointmentResponse.error || !appointmentResponse.data) {
-			console.error('Appointment creation failed:', appointmentResponse.error);
-			return NextResponse.json(
-				{ error: 'Failed to create appointment. The time slot may no longer be available.' },
-				{ status: 422 },
-			);
-		}
-
-		const appointment = appointmentResponse.data ;
 
 		// 2. Create or get cart
-		const cartResponse = await cartCreateOrGet({
-			headers: { 'X-Cart-Id': cartId },
-		});
-
-		if (cartResponse.error || !cartResponse.data) {
-			return NextResponse.json(
-				{ error: 'Failed to create cart' },
-				{ status: 500 },
-			);
-		}
-
-		const cart = cartResponse.data ;
+		const { data: cart } = await CartService.createOrGet({ headers: { ...authHeaders, 'X-Cart-Id': cartId } });
 
 		// 3. Add appointment to cart
-		const addItemResponse = await cartAddItem({
-			headers: { 'X-Cart-Id': cart.id },
-			body: { appointmentId: appointment.id },
+		const { data: updatedCart } = await CartService.addItem({
+			body: { appointmentId: appointment!.id },
+			headers: { ...authHeaders, 'X-Cart-Id': cart!.id },
 		});
-
-		if (addItemResponse.error) {
-			return NextResponse.json(
-				{ error: 'Failed to add to cart' },
-				{ status: 500 },
-			);
-		}
 
 		return NextResponse.json({
 			appointment,
-			cart: addItemResponse.data,
+			cart: updatedCart,
 		});
 	} catch (err) {
 		console.error('Book API error:', err);

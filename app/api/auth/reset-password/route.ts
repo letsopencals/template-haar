@@ -1,20 +1,11 @@
-import { authResetPassword } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { AuthService } from '@opencals/storefront-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json();
-		const response = await authResetPassword({ body });
-
-		if (response.error) {
-			const err = response.error as { message?: string } | undefined;
-			return NextResponse.json(
-				{ error: err?.message ?? 'Failed to reset password' },
-				{ status: 400 },
-			);
-		}
-
+		await AuthService.resetPassword({ body });
 		return new NextResponse(null, { status: 204 });
 	} catch (err) {
 		console.error('Reset password error:', err);

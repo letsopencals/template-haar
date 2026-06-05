@@ -1,5 +1,5 @@
-import { orderList } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { OrderService } from '@opencals/storefront-sdk';
 import { requireAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -12,14 +12,11 @@ export async function GET(request: NextRequest) {
 	const page = searchParams.get('page') ?? '1';
 
 	try {
-		const response = await orderList({
-			headers: auth.headers,
+		const { data } = await OrderService.list({
 			query: { take: Number(take), page: Number(page) },
+			headers: auth.headers,
 		});
-		if (response.error) {
-			return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 400 });
-		}
-		return NextResponse.json(response.data);
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Orders error:', err);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

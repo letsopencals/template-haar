@@ -1,14 +1,9 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import type { JWT } from 'next-auth/jwt';
-import {
-	authSignIn,
-	authVerifyEmail,
-	authRefresh,
-	selfServiceGetProfile,
-	type Customer,
-} from '@opencals/storefront-sdk';
+import type { Customer } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { AuthService, SelfService } from '@opencals/storefront-sdk';
 
 declare module 'next-auth' {
 	interface Session {
@@ -49,19 +44,14 @@ declare module 'next-auth/jwt' {
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
 	try {
-		const response = await authRefresh({
+		const { data } = await AuthService.refresh({
 			headers: { Authorization: `Bearer ${token.refreshToken}` },
 		});
 
-		if (response.error || !response.data) {
-			return { ...token, accessToken: undefined, refreshToken: undefined };
-		}
-
-		const data = response.data;
 		return {
 			...token,
-			accessToken: data.accessToken,
-			refreshToken: data.refreshToken ?? token.refreshToken,
+			accessToken: data?.accessToken,
+			refreshToken: data?.refreshToken ?? token.refreshToken,
 			accessTokenExpires: Date.now() + 25 * 60 * 1000,
 		};
 	} catch {
@@ -98,28 +88,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 			async authorize(credentials) {
 				const { email, password } = credentials as { email: string; password: string };
 
-				const res = await authSignIn({
-					body: { email, password },
-				});
+				try {
+					const { data } = await AuthService.signIn({ body: { email, password } });
+					const { accessToken, refreshToken } = data!;
 
-				if (res.error || !res.data) return null;
+					// Fetch customer profile
+					const { data: customer } = await SelfService.getProfile({
+						headers: { Authorization: `Bearer ${accessToken}` },
+					});
 
-				const { accessToken, refreshToken } = res.data;
-
-				// Fetch customer profile
-				const profileRes = await selfServiceGetProfile({
-					headers: { Authorization: `Bearer ${accessToken}` },
-				});
-
-				const customer = profileRes.data;
-
-				return {
-					id: customer?.id ?? email,
-					email,
-					accessToken,
-					refreshToken,
-					customer: mapCustomer(customer),
-				};
+					return {
+						id: customer?.id ?? email,
+						email,
+						accessToken,
+						refreshToken,
+						customer: mapCustomer(customer),
+					};
+				} catch {
+					return null;
+				}
 			},
 		}),
 		// Auto-auth after checkout (receives tokens directly)
@@ -160,27 +147,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 			async authorize(credentials) {
 				const { token } = credentials as { token: string };
 
-				const res = await authVerifyEmail({
-					body: { token },
-				});
+				try {
+					const { data } = await AuthService.verifyEmail({ body: { token } });
+					const { accessToken, refreshToken } = data!;
 
-				if (res.error || !res.data) return null;
+					const { data: customer } = await SelfService.getProfile({
+						headers: { Authorization: `Bearer ${accessToken}` },
+					});
 
-				const { accessToken, refreshToken } = res.data;
-
-				const profileRes = await selfServiceGetProfile({
-					headers: { Authorization: `Bearer ${accessToken}` },
-				});
-
-				const customer = profileRes.data;
-
-				return {
-					id: customer?.id ?? 'verified-customer',
-					email: customer?.email ?? undefined,
-					accessToken,
-					refreshToken,
-					customer: mapCustomer(customer),
-				};
+					return {
+						id: customer?.id ?? 'verified-customer',
+						email: customer?.email ?? undefined,
+						accessToken,
+						refreshToken,
+						customer: mapCustomer(customer),
+					};
+				} catch {
+					return null;
+				}
 			},
 		}),
 	],

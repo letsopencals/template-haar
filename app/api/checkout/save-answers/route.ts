@@ -1,5 +1,6 @@
-import { checkoutSaveAnswers } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { CheckoutService } from '@opencals/storefront-sdk';
+import { getAccessToken } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -7,13 +8,11 @@ export async function POST(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		const response = await checkoutSaveAnswers({
-			headers: { 'X-Cart-Id': cartId },
+		const token = await getAccessToken();
+		await CheckoutService.saveAnswers({
 			body,
+			headers: { Authorization: `Bearer ${token ?? ''}`, 'X-Cart-Id': cartId },
 		});
-		if (response.error) {
-			return NextResponse.json({ error: 'Failed to save answers' }, { status: 400 });
-		}
 		return new NextResponse(null, { status: 204 });
 	} catch (err) {
 		console.error('Checkout save-answers error:', err);

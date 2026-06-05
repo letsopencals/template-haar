@@ -1,5 +1,5 @@
-import { selfServiceChangePassword } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { SelfService } from '@opencals/storefront-sdk';
 import { requireAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -9,17 +9,7 @@ export async function PUT(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		const response = await selfServiceChangePassword({
-			headers: auth.headers,
-			body,
-		});
-		if (response.error) {
-			const err = response.error as { message?: string } | undefined;
-			return NextResponse.json(
-				{ error: err?.message ?? 'Failed to change password' },
-				{ status: 400 },
-			);
-		}
+		await SelfService.changePassword({ body, headers: auth.headers });
 		return new NextResponse(null, { status: 204 });
 	} catch (err) {
 		console.error('Password PUT error:', err);

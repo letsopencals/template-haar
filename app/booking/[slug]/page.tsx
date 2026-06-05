@@ -46,7 +46,7 @@ export default function BookingPage() {
 	const variants = product?.variants ?? [];
 	const hasVariants = variants.length > 0;
 	const activeVariant: Product | null = hasVariants
-		? variants.find((v) => v.id === selectedVariantId) ?? variants[0] ?? null
+		? variants.find((v) => v.id === selectedVariantId) || null
 		: product;
 
 	// The final staff ID used for booking: either top-level selection or slot-level confirmation

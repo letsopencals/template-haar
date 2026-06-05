@@ -1,5 +1,5 @@
-import { selfServiceGetProfile, selfServiceUpdateProfile } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { SelfService } from '@opencals/storefront-sdk';
 import { requireAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -8,11 +8,8 @@ export async function GET() {
 	if (auth.error) return auth.error;
 
 	try {
-		const response = await selfServiceGetProfile({ headers: auth.headers });
-		if (response.error) {
-			return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 400 });
-		}
-		return NextResponse.json(response.data);
+		const { data } = await SelfService.getProfile({ headers: auth.headers });
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Profile GET error:', err);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -25,14 +22,8 @@ export async function PUT(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		const response = await selfServiceUpdateProfile({
-			headers: auth.headers,
-			body,
-		});
-		if (response.error) {
-			return NextResponse.json({ error: 'Failed to update profile' }, { status: 400 });
-		}
-		return NextResponse.json(response.data);
+		const { data } = await SelfService.updateProfile({ body, headers: auth.headers });
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Profile PUT error:', err);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

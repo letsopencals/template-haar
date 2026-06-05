@@ -1,5 +1,6 @@
-import { checkoutGetCartQuestions } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { CheckoutService } from '@opencals/storefront-sdk';
+import { getAccessToken } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -7,14 +8,12 @@ export async function GET(request: NextRequest) {
 	const language = request.nextUrl.searchParams.get('language') ?? 'en';
 
 	try {
-		const response = await checkoutGetCartQuestions({
+		const token = await getAccessToken();
+		const { data } = await CheckoutService.getCartQuestions({
 			path: { language },
-			headers: { 'X-Cart-Id': cartId },
+			headers: { Authorization: `Bearer ${token ?? ''}`, 'X-Cart-Id': cartId },
 		});
-		if (response.error) {
-			return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 400 });
-		}
-		return NextResponse.json(response.data);
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Checkout questions error:', err);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

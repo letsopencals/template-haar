@@ -1,5 +1,5 @@
-import { productGetCurrentAvailabilities, productGetBySlug } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { ProductService } from '@opencals/storefront-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -22,32 +22,14 @@ export async function GET(
 
 	try {
 		// First get the product ID from slug
-		const productResponse = await productGetBySlug({
-			path: { slug },
-		});
+		const { data: product } = await ProductService.getBySlug({ path: { slug } });
 
-		if (productResponse.error || !productResponse.data) {
-			return NextResponse.json(
-				{ error: 'Product not found' },
-				{ status: 404 },
-			);
-		}
-
-		const product = productResponse.data;
-
-		const response = await productGetCurrentAvailabilities({
-			path: { productId: product.id },
+		const { data } = await ProductService.getCurrentAvailabilities({
+			path: { productId: product!.id },
 			query: { date, timezone, staffMemberId, locationId },
 		});
 
-		if (response.error) {
-			return NextResponse.json(
-				{ error: 'Failed to fetch availability' },
-				{ status: 500 },
-			);
-		}
-
-		return NextResponse.json(response.data);
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Availability API error:', err);
 		return NextResponse.json(

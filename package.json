@@ -10,7 +10,7 @@
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^3.9.0",
-		"@opencals/storefront-sdk": "^0.1.2",
+		"@opencals/storefront-sdk": "^0.2.0",
 		"@stripe/react-stripe-js": "^3.1.0",
 		"@stripe/stripe-js": "^5.5.0",
 		"clsx": "^2.1.0",

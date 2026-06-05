@@ -1,5 +1,5 @@
-import { productGetBySlug } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { ProductService } from '@opencals/storefront-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -9,18 +9,8 @@ export async function GET(
 	const { slug } = await params;
 
 	try {
-		const response = await productGetBySlug({
-			path: { slug },
-		});
-
-		if (response.error) {
-			return NextResponse.json(
-				{ error: 'Product not found' },
-				{ status: 404 },
-			);
-		}
-
-		return NextResponse.json(response.data);
+		const { data } = await ProductService.getBySlug({ path: { slug } });
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Product API error:', err);
 		return NextResponse.json(

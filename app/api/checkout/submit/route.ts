@@ -1,5 +1,6 @@
-import { checkoutSubmit } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { CheckoutService } from '@opencals/storefront-sdk';
+import { getAccessToken } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -7,17 +8,12 @@ export async function POST(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		const response = await checkoutSubmit({
-			headers: { 'X-Cart-Id': cartId },
+		const token = await getAccessToken();
+		const { data } = await CheckoutService.submit({
 			body,
+			headers: { Authorization: `Bearer ${token ?? ''}`, 'X-Cart-Id': cartId },
 		});
-		if (response.error) {
-			return NextResponse.json(
-				{ error: 'Failed to submit checkout' },
-				{ status: 400 },
-			);
-		}
-		return NextResponse.json(response.data);
+		return NextResponse.json(data);
 	} catch (err) {
 		console.error('Checkout submit error:', err);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

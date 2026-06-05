@@ -1,21 +1,11 @@
-import { locationList } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
+import { LocationService } from '@opencals/storefront-sdk';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
 	try {
-		const response = await locationList({
-			query: { take: 50 },
-		});
-
-		if (response.error) {
-			return NextResponse.json(
-				{ error: 'Failed to fetch locations' },
-				{ status: 500 },
-			);
-		}
-
-		return NextResponse.json(response.data?.data ?? []);
+		const { data } = await LocationService.list({ query: { take: 50 } });
+		return NextResponse.json(data?.data ?? []);
 	} catch (err) {
 		console.error('Locations API error:', err);
 		return NextResponse.json(
