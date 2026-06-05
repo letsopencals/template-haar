@@ -56,7 +56,7 @@ export function ServicesSection() {
 	const isHeaderInView = useInView(headerRef, { once: true, margin: '-100px' });
 
 	return (
-		<section className="noise-overlay relative bg-charcoal py-section-sm lg:py-section">
+		<section id="services" className="noise-overlay relative bg-charcoal py-section-sm lg:py-section">
 			<div className="relative z-10 mx-auto max-w-[1400px] px-6 lg:px-10">
 				<div className="grid gap-16 lg:grid-cols-12">
 					{/* Left — header */}

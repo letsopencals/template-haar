@@ -23,7 +23,7 @@ export function Gallery() {
 	const isInView = useInView(ref, { once: true, margin: '-50px' });
 
 	return (
-		<section ref={ref} className="bg-white py-section-sm lg:py-section">
+		<section id="gallery" ref={ref} className="bg-white py-section-sm lg:py-section">
 			<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
 				{/* Header */}
 				<div className="flex items-end justify-between">

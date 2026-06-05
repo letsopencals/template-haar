@@ -40,6 +40,12 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body>
+				{/* Allow parent frames to control scrolling via postMessage */}
+				<script
+					dangerouslySetInnerHTML={{
+						__html: `window.addEventListener("message",function(e){if(e.data&&e.data.type==="scrollTo"&&e.data.id){var el=document.getElementById(e.data.id);if(el){var top=el.getBoundingClientRect().top+window.scrollY;window.scrollTo({top:top,behavior:"smooth"})}}if(e.data&&e.data.type==="scrollTop"){window.scrollTo({top:0,behavior:"smooth"})}});`,
+					}}
+				/>
 				<Providers>
 					<Header />
 					<main>{children}</main>

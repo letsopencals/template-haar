@@ -7,7 +7,7 @@ export function Hero() {
 	const { hero } = siteConfig;
 
 	return (
-		<section className="relative overflow-hidden bg-white">
+		<section id="hero" className="relative overflow-hidden bg-white">
 			{/* Top accent line */}
 			<div className="absolute top-0 left-0 right-0 h-[3px] bg-accent" />
 

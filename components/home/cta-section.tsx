@@ -12,7 +12,7 @@ export function CtaSection() {
 	const { cta } = siteConfig;
 
 	return (
-		<section ref={ref} className="relative overflow-hidden bg-cream py-section-sm lg:py-section">
+		<section id="cta" ref={ref} className="relative overflow-hidden bg-cream py-section-sm lg:py-section">
 			<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
 				<div className="grid items-center gap-12 lg:grid-cols-2">
 					{/* Left — Image */}

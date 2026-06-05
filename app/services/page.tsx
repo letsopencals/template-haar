@@ -243,7 +243,7 @@ export default function ServicesPage() {
 	return (
 		<>
 			{/* Hero */}
-			<section className="bg-white pt-32 pb-20 lg:pt-40 lg:pb-28">
+			<section id="services-hero" className="bg-white pt-32 pb-20 lg:pt-40 lg:pb-28">
 				<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
 					<motion.p
 						initial={{opacity: 0, y: 20}}
@@ -278,7 +278,7 @@ export default function ServicesPage() {
 			</section>
 
 			{/* Service list */}
-			<section className="bg-white pb-20 lg:pb-32">
+			<section id="services-list" className="bg-white pb-20 lg:pb-32">
 				<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
 					{loading && (
 						<>
@@ -307,7 +307,7 @@ export default function ServicesPage() {
 			</section>
 
 			{/* Bottom CTA */}
-			<section className="bg-accent py-20">
+			<section id="services-cta" className="bg-accent py-20">
 				<div className="mx-auto max-w-[1400px] px-6 text-center lg:px-10">
 					<h2 className="heading-display text-4xl text-white md:text-5xl">
 						NOT SURE WHICH SERVICE?

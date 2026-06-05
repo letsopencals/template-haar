@@ -12,7 +12,7 @@ export function Testimonials() {
 	const { testimonials } = siteConfig;
 
 	return (
-		<section ref={ref} className="noise-overlay relative bg-charcoal py-section-sm lg:py-section">
+		<section id="testimonials" ref={ref} className="noise-overlay relative bg-charcoal py-section-sm lg:py-section">
 			<div className="relative z-10 mx-auto max-w-[1400px] px-6 lg:px-10">
 				{/* Section header */}
 				<div className="flex items-end justify-between">

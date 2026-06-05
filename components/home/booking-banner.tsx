@@ -11,7 +11,7 @@ export function BookingBanner() {
 	const { bookingBanner } = siteConfig;
 
 	return (
-		<section ref={ref} className="relative overflow-hidden bg-accent py-20 lg:py-28">
+		<section id="booking" ref={ref} className="relative overflow-hidden bg-accent py-20 lg:py-28">
 			{/* Background pattern */}
 			<div className="absolute inset-0 opacity-10">
 				<div className="absolute -right-20 -top-20 h-80 w-80 rounded-full border-[40px] border-white" />
