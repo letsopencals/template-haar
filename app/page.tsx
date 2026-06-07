@@ -5,6 +5,7 @@ import { CtaSection } from '@/components/home/cta-section';
 import { Gallery } from '@/components/home/gallery';
 import { Testimonials } from '@/components/home/testimonials';
 import { BookingBanner } from '@/components/home/booking-banner';
+import { Analytics } from "@vercel/analytics/next"
 
 export default function HomePage() {
 	return (
@@ -16,6 +17,7 @@ export default function HomePage() {
 			<Gallery />
 			<Testimonials />
 			<BookingBanner />
+			<Analytics />
 		</>
 	);
 }
