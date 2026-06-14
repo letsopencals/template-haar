@@ -2,13 +2,31 @@ import '@/lib/opencals';
 import { AppointmentService, CartService } from '@opencals/storefront-sdk';
 import { getAccessToken } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
+
+interface AddOnSelection {
+	addOnId: string;
+	quantity?: number;
+}
 
 export async function POST(request: NextRequest) {
-	const cartId = request.headers.get('X-Cart-Id') ?? '';
+	const cartIdHeader = request.headers.get('X-Cart-Id') ?? '';
 
 	try {
 		const body = await request.json();
-		const { slot, numberOfAttendees } = body;
+		const { slot, numberOfAttendees, addOns } = body as {
+			slot: {
+				productId: string;
+				fromDate: string;
+				fromTime: string;
+				toDate: string;
+				toTime: string;
+				staffMemberId?: string | null;
+				locationId?: string | null;
+			};
+			numberOfAttendees?: number;
+			addOns?: AddOnSelection[];
+		};
 
 		if (!slot?.productId || !slot?.fromDate || !slot?.fromTime || !slot?.toDate || !slot?.toTime) {
 			return NextResponse.json(
@@ -20,7 +38,10 @@ export async function POST(request: NextRequest) {
 		const token = await getAccessToken();
 		const authHeaders = { Authorization: `Bearer ${token ?? ''}` };
 
-		// 1. Create appointment
+		const { data: cart } = await CartService.createOrGet({
+			headers: { ...authHeaders, 'X-Cart-Id': cartIdHeader },
+		});
+
 		const { data: appointment } = await AppointmentService.create({
 			body: {
 				slot: {
@@ -33,28 +54,23 @@ export async function POST(request: NextRequest) {
 					locationId: slot.locationId ?? null,
 				},
 				numberOfAttendees: numberOfAttendees ?? 1,
+				cartId: cart!.id,
+				addOns: (addOns ?? [])
+					.filter((a) => a?.addOnId)
+					.map((a) => ({
+						addOnId: a.addOnId,
+						...(typeof a.quantity === 'number' ? { quantity: a.quantity } : {}),
+					})),
 			},
 			headers: authHeaders,
 		});
 
-		// 2. Create or get cart
-		const { data: cart } = await CartService.createOrGet({ headers: { ...authHeaders, 'X-Cart-Id': cartId } });
-
-		// 3. Add appointment to cart
-		const { data: updatedCart } = await CartService.addItem({
-			body: { appointmentId: appointment!.id },
+		const { data: finalCart } = await CartService.get({
 			headers: { ...authHeaders, 'X-Cart-Id': cart!.id },
 		});
 
-		return NextResponse.json({
-			appointment,
-			cart: updatedCart,
-		});
+		return NextResponse.json({ appointment, cart: finalCart });
 	} catch (err) {
-		console.error('Book API error:', err);
-		return NextResponse.json(
-			{ error: 'Internal server error' },
-			{ status: 500 },
-		);
+		return handleApiError(err);
 	}
 }

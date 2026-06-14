@@ -6,11 +6,8 @@ import { formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 import type { Order, CollectionMeta, OrderLineItem } from '@opencals/storefront-sdk';
 
-// The SDK Order type is missing `id` but it's returned by the API
-type OrderWithId = Order & { id: string };
-
 export default function OrdersPage() {
-	const [orders, setOrders] = useState<OrderWithId[]>([]);
+	const [orders, setOrders] = useState<Order[]>([]);
 	const [meta, setMeta] = useState<CollectionMeta | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [page, setPage] = useState(1);
@@ -22,7 +19,7 @@ export default function OrdersPage() {
 		try {
 			const res = await fetch(`/api/account/orders?take=10&page=${p}`);
 			if (res.ok) {
-				const data: { data: OrderWithId[]; meta: CollectionMeta } = await res.json();
+				const data: { data: Order[]; meta: CollectionMeta } = await res.json();
 				setOrders(data.data ?? []);
 				setMeta(data.meta ?? null);
 			}
@@ -86,12 +83,30 @@ export default function OrdersPage() {
 								{/* Line items */}
 								{order.lineItems && order.lineItems.length > 0 && (
 									<div className="mt-3 space-y-1">
-										{order.lineItems.map((item: OrderLineItem, i: number) => (
-											<div key={i} className="flex justify-between text-xs text-warm-gray">
-												<span>{item.appointment?.product?.title ?? 'Service'}</span>
-												<span>{formatPrice(item.total ?? 0, order.paymentCurrencyCode)}</span>
-											</div>
-										))}
+										{order.lineItems.map((item: OrderLineItem, i: number) => {
+											const addOnLineItems = item.addOnLineItems ?? [];
+											return (
+												<div key={i}>
+													<div className="flex justify-between text-xs text-warm-gray">
+														<span>{item.appointment?.product?.title ?? 'Service'}</span>
+														<span>{formatPrice(item.total ?? 0, order.paymentCurrencyCode)}</span>
+													</div>
+													{addOnLineItems.length > 0 && (
+														<div className="mt-0.5 ml-3 space-y-0.5">
+															{addOnLineItems.map((aoli, j) => (
+																<div key={j} className="flex justify-between text-[11px] text-warm-gray/80">
+																	<span>
+																		{aoli.addOn?.title ?? 'Add-on'}
+																		{aoli.quantity > 1 && ` × ${aoli.quantity}`}
+																	</span>
+																	<span>{formatPrice(aoli.discountedUnitPrice * aoli.quantity, order.paymentCurrencyCode)}</span>
+																</div>
+															))}
+														</div>
+													)}
+												</div>
+											);
+										})}
 									</div>
 								)}
 							</Link>

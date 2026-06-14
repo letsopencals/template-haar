@@ -17,6 +17,10 @@ interface CartContextValue {
 	setCart: (cart: Cart) => void;
 	/** Remove an item from cart */
 	removeItem: (itemId: string) => Promise<void>;
+	/** Update an add-on item's quantity */
+	updateAddOnQuantity: (addOnItemId: string, quantity: number) => Promise<void>;
+	/** Remove an add-on item from a cart item */
+	removeAddOnItem: (addOnItemId: string) => Promise<void>;
 	/** Extend cart expiration */
 	extendCart: () => Promise<void>;
 	/** Clear cart state (after checkout) */
@@ -137,6 +141,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 		[cartId],
 	);
 
+	const updateAddOnQuantity = useCallback(
+		async (addOnItemId: string, quantity: number) => {
+			const res = await fetch(`/api/cart/add-ons/${addOnItemId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json', ...getCartHeaders(cartId) },
+				body: JSON.stringify({ quantity }),
+			});
+			if (res.ok) {
+				setCartState(await res.json());
+			}
+		},
+		[cartId],
+	);
+
+	const removeAddOnItem = useCallback(
+		async (addOnItemId: string) => {
+			const res = await fetch(`/api/cart/add-ons/${addOnItemId}`, {
+				method: 'DELETE',
+				headers: getCartHeaders(cartId),
+			});
+			if (res.ok) {
+				setCartState(await res.json());
+			}
+		},
+		[cartId],
+	);
+
 	const extendCart = useCallback(async () => {
 		if (!cartId) return;
 		const res = await fetch('/api/cart/extend', {
@@ -165,6 +196,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 				refreshCart,
 				setCart,
 				removeItem,
+				updateAddOnQuantity,
+				removeAddOnItem,
 				extendCart,
 				clearCart,
 			}}

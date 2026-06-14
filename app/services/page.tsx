@@ -6,9 +6,11 @@ import Link from 'next/link';
 import type { Product } from '@opencals/storefront-sdk';
 import { formatDuration, formatPrice, getProductImage } from '@/lib/format';
 import { useLocation } from '@/contexts/location-context';
+import { useSettings } from '@/contexts/settings-context';
 import { StaffAvatars } from '@/components/ui/staff-avatars';
 
 function ServiceCard({product, index}: { product: Product; index: number }) {
+	const { currency } = useSettings();
 	const ref = useRef<HTMLDivElement>(null);
 	const isInView = useInView(ref, {once: true, margin: '-80px'});
 	const isEven = index % 2 === 0;
@@ -59,7 +61,7 @@ function ServiceCard({product, index}: { product: Product; index: number }) {
 								</div>
 								<div className="flex items-center gap-4">
 									<span className="text-sm font-semibold text-charcoal">
-										{formatPrice(variant.price)}
+										{formatPrice(variant.price, currency)}
 									</span>
 									<svg
 										className="h-4 w-4 text-warm-gray transition-transform group-hover:translate-x-1 group-hover:text-accent"
@@ -87,7 +89,7 @@ function ServiceCard({product, index}: { product: Product; index: number }) {
 							<div className="flex items-center justify-between border-b border-cream-dark py-4">
 								<span className="text-sm font-medium text-charcoal">Price</span>
 								<span className="text-sm font-semibold text-charcoal">
-									{formatPrice((variants[0] ?? product).price)}
+									{formatPrice((variants[0] ?? product).price, currency)}
 								</span>
 							</div>
 							{product.maxAttendees > 1 && (
@@ -215,7 +217,7 @@ function LocationFilter() {
 }
 
 export default function ServicesPage() {
-	const {selectedLocationId} = useLocation();
+	const {selectedLocationId, setSelectedLocationId} = useLocation();
 	const [products, setProducts] = useState<Product[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -223,11 +225,18 @@ export default function ServicesPage() {
 	useEffect(() => {
 		async function fetchProducts() {
 			setLoading(true);
+			setError(null);
 			try {
 				const params = new URLSearchParams();
 				if (selectedLocationId) params.set('locationId', selectedLocationId);
 				const res = await fetch(`/api/products?${params}`);
-				if (!res.ok) throw new Error('Failed to fetch');
+				if (!res.ok) {
+					if (selectedLocationId && res.status === 400) {
+						setSelectedLocationId(null);
+						return;
+					}
+					throw new Error('Failed to fetch');
+				}
 				const data = await res.json();
 				setProducts(data.data ?? []);
 			} catch {
@@ -238,7 +247,7 @@ export default function ServicesPage() {
 		}
 
 		fetchProducts();
-	}, [selectedLocationId]);
+	}, [selectedLocationId, setSelectedLocationId]);
 
 	return (
 		<>

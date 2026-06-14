@@ -8,7 +8,7 @@ import { useDateFormatter } from '@/hooks/use-date-formatter';
 export function OrderSummary() {
 	const { cart } = useCart();
 	const { items, isExpired, timeRemaining, minutes, seconds, extendCart } = useCheckout();
-	const { formatCustom, formatSlot } = useDateFormatter();
+	const { formatCustom } = useDateFormatter();
 
 	if (!cart) return null;
 
@@ -41,34 +41,50 @@ export function OrderSummary() {
 			<div className="border border-charcoal/10 p-6">
 				<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">Order Summary</h3>
 				<div className="mt-4 divide-y divide-charcoal/5">
-					{items.map((item) => (
-						<div key={item.id} className="flex items-start justify-between py-3">
-							<div className="flex-1">
-								<p className="text-sm font-medium text-charcoal">
-									{item.appointment?.product?.title ?? 'Service'}
-								</p>
-								{item.appointment?.fromDate && (
-									<p className="mt-0.5 text-xs text-warm-gray">
-										{formatCustom(item.appointment.fromDate + 'T00:00:00', 'MMM D')}
-										{item.appointment.fromTime && (
-											<>
+					{items.map((item) => {
+						const addOnItems = item.addOnItems ?? [];
+						return (
+							<div key={item.id} className="py-3">
+								<div className="flex items-start justify-between">
+									<div className="flex-1">
+										<p className="text-sm font-medium text-charcoal">
+											{item.appointment?.product?.title ?? 'Service'}
+										</p>
+										{item.appointment?.from && (
+											<p className="mt-0.5 text-xs text-warm-gray">
+												{formatCustom(item.appointment.from, 'MMM D')}
 												{' at '}
-												{formatSlot(item.appointment.fromDate, item.appointment.fromTime, 'time')}
-											</>
+												{formatCustom(item.appointment.from, 'h:mm A')}
+											</p>
 										)}
+										{item.appointment?.product?.duration && (
+											<p className="mt-0.5 text-xs text-warm-gray">
+												{formatDuration(item.appointment.product.duration)}
+											</p>
+										)}
+									</div>
+									<p className="text-sm font-semibold text-charcoal">
+										{formatPrice(item.originalUnitPrice ?? 0, cart.paymentCurrencyCode)}
 									</p>
-								)}
-								{item.appointment?.product?.duration && (
-									<p className="mt-0.5 text-xs text-warm-gray">
-										{formatDuration(item.appointment.product.duration)}
-									</p>
+								</div>
+								{addOnItems.length > 0 && (
+									<div className="mt-2 ml-3 space-y-1 border-l border-dashed border-charcoal/20 pl-3">
+										{addOnItems.map((aoi) => (
+											<div key={aoi.id} className="flex items-center justify-between text-xs text-warm-gray">
+												<span>
+													{aoi.addOn?.title ?? 'Add-on'}
+													{aoi.quantity > 1 && ` × ${aoi.quantity}`}
+												</span>
+												<span className="font-medium text-charcoal">
+													{formatPrice(aoi.discountedUnitPrice * aoi.quantity, cart.paymentCurrencyCode)}
+												</span>
+											</div>
+										))}
+									</div>
 								)}
 							</div>
-							<p className="text-sm font-semibold text-charcoal">
-								{formatPrice(item.originalUnitPrice ?? 0, cart.paymentCurrencyCode)}
-							</p>
-						</div>
-					))}
+						);
+					})}
 				</div>
 				<div className="mt-4 border-t border-charcoal/10 pt-4">
 					{cart.totalTax > 0 && (

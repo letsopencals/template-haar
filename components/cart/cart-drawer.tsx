@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useCart } from '@/contexts/cart-context';
 import { formatPrice, formatDuration } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
-import type { CartItemWithAppointment } from '@/contexts/checkout-context';
 
 interface CartDrawerProps {
 	open: boolean;
@@ -13,10 +12,10 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
-	const { cart, removeItem, timeRemaining } = useCart();
-	const { formatCustom, formatSlot } = useDateFormatter();
+	const { cart, removeItem, updateAddOnQuantity, removeAddOnItem, timeRemaining } = useCart();
+	const { formatCustom } = useDateFormatter();
 
-	const items = (cart?.items ?? []) as CartItemWithAppointment[];
+	const items = cart?.items ?? [];
 	const isExpired = timeRemaining !== null && timeRemaining <= 0;
 	const minutes = timeRemaining !== null ? Math.floor(timeRemaining / 60) : null;
 	const seconds = timeRemaining !== null ? timeRemaining % 60 : null;
@@ -101,47 +100,106 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
 								</div>
 							) : (
 								<div className="divide-y divide-charcoal/5">
-									{items.map((item) => (
-										<div key={item.id} className="py-4 first:pt-0 last:pb-0">
-											<div className="flex items-start justify-between gap-3">
-												<div className="flex-1">
-													<p className="text-sm font-medium text-charcoal">
-														{item.appointment?.product?.title ?? 'Service'}
-													</p>
-													{item.appointment?.fromDate && (
-														<p className="mt-1 text-xs text-warm-gray">
-															{formatCustom(item.appointment.fromDate + 'T00:00:00', 'ddd, MMM D')}
-															{item.appointment.fromTime && (
-																<>
-																	{' at '}
-																	{formatSlot(item.appointment.fromDate, item.appointment.fromTime, 'time')}
-																</>
-															)}
+									{items.map((item) => {
+										const addOnItems = item.addOnItems ?? [];
+										return (
+											<div key={item.id} className="py-4 first:pt-0 last:pb-0">
+												<div className="flex items-start justify-between gap-3">
+													<div className="flex-1">
+														<p className="text-sm font-medium text-charcoal">
+															{item.appointment?.product?.title ?? 'Service'}
 														</p>
-													)}
-													{item.appointment?.product?.duration && (
-														<p className="mt-0.5 text-xs text-warm-gray">
-															{formatDuration(item.appointment.product.duration)}
-														</p>
-													)}
+														{item.appointment?.from && (
+															<p className="mt-1 text-xs text-warm-gray">
+																{formatCustom(item.appointment.from, 'ddd, MMM D')}
+																{' at '}
+																{formatCustom(item.appointment.from, 'h:mm A')}
+															</p>
+														)}
+														{item.appointment?.product?.duration && (
+															<p className="mt-0.5 text-xs text-warm-gray">
+																{formatDuration(item.appointment.product.duration)}
+															</p>
+														)}
+													</div>
+													<div className="flex items-start gap-2">
+														<span className="text-sm font-semibold text-charcoal">
+															{formatPrice(item.originalUnitPrice ?? 0, cart?.paymentCurrencyCode)}
+														</span>
+														<button
+															onClick={() => removeItem(item.id)}
+															className="flex h-6 w-6 items-center justify-center text-warm-gray transition-colors hover:text-red-500"
+															aria-label="Remove item"
+														>
+															<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+																<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+															</svg>
+														</button>
+													</div>
 												</div>
-												<div className="flex items-start gap-2">
-													<span className="text-sm font-semibold text-charcoal">
-														{formatPrice(item.originalUnitPrice ?? 0, cart?.paymentCurrencyCode)}
-													</span>
-													<button
-														onClick={() => removeItem(item.id)}
-														className="flex h-6 w-6 items-center justify-center text-warm-gray transition-colors hover:text-red-500"
-														aria-label="Remove item"
-													>
-														<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-															<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-														</svg>
-													</button>
-												</div>
+
+												{/* Nested add-on items */}
+												{addOnItems.length > 0 && (
+													<div className="mt-3 space-y-2 border-l-2 border-charcoal/10 pl-3">
+														{addOnItems.map((aoi) => {
+															const isDuration = aoi.addOn?.durationMultiplied ?? false;
+															const atMax =
+																!isDuration &&
+																aoi.addOn?.maxQuantity != null &&
+																aoi.quantity >= aoi.addOn.maxQuantity;
+															return (
+																<div key={aoi.id} className="flex items-center justify-between gap-2">
+																	<div className="min-w-0 flex-1">
+																		<p className="truncate text-xs font-medium text-charcoal">
+																			{aoi.addOn?.title ?? 'Add-on'}
+																		</p>
+																	</div>
+																	<div className="flex items-center gap-1">
+																		{!isDuration && (
+																			<>
+																				<button
+																					onClick={() => updateAddOnQuantity(aoi.id, aoi.quantity - 1)}
+																					className="flex h-6 w-6 items-center justify-center border border-charcoal/20 text-charcoal transition-colors hover:bg-cream"
+																					aria-label="Decrease add-on quantity"
+																				>
+																					<svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+																						<path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+																					</svg>
+																				</button>
+																				<span className="w-5 text-center text-xs font-semibold text-charcoal">{aoi.quantity}</span>
+																				<button
+																					disabled={atMax}
+																					onClick={() => updateAddOnQuantity(aoi.id, aoi.quantity + 1)}
+																					className="flex h-6 w-6 items-center justify-center border border-charcoal/20 text-charcoal transition-colors hover:bg-cream disabled:opacity-30"
+																					aria-label="Increase add-on quantity"
+																				>
+																					<svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+																						<path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+																					</svg>
+																				</button>
+																			</>
+																		)}
+																		<span className="ml-1 whitespace-nowrap text-xs font-semibold text-charcoal">
+																			{formatPrice(aoi.discountedUnitPrice * aoi.quantity, cart?.paymentCurrencyCode)}
+																		</span>
+																		<button
+																			onClick={() => removeAddOnItem(aoi.id)}
+																			className="flex h-6 w-6 items-center justify-center text-warm-gray transition-colors hover:text-red-500"
+																			aria-label="Remove add-on"
+																		>
+																			<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+																				<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+																			</svg>
+																		</button>
+																	</div>
+																</div>
+															);
+														})}
+													</div>
+												)}
 											</div>
-										</div>
-									))}
+										);
+									})}
 								</div>
 							)}
 						</div>

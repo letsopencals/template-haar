@@ -2,6 +2,7 @@ import '@/lib/opencals';
 import { SelfService } from '@opencals/storefront-sdk';
 import { requireAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET() {
 	const auth = await requireAuth();
@@ -11,8 +12,7 @@ export async function GET() {
 		const { data } = await SelfService.getProfile({ headers: auth.headers });
 		return NextResponse.json(data);
 	} catch (err) {
-		console.error('Profile GET error:', err);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		return handleApiError(err);
 	}
 }
 
@@ -25,7 +25,6 @@ export async function PUT(request: NextRequest) {
 		const { data } = await SelfService.updateProfile({ body, headers: auth.headers });
 		return NextResponse.json(data);
 	} catch (err) {
-		console.error('Profile PUT error:', err);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		return handleApiError(err);
 	}
 }

@@ -2,6 +2,7 @@ import '@/lib/opencals';
 import { CartService } from '@opencals/storefront-sdk';
 import { getAccessToken } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function DELETE(
 	_request: NextRequest,
@@ -14,7 +15,6 @@ export async function DELETE(
 		const { data } = await CartService.removeItem({ path: { itemId }, headers: { Authorization: `Bearer ${token ?? ''}` } });
 		return NextResponse.json(data);
 	} catch (err) {
-		console.error('Cart remove item error:', err);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		return handleApiError(err);
 	}
 }

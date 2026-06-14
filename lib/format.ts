@@ -1,4 +1,4 @@
-import type { Product } from '@opencals/storefront-sdk';
+import type { AddOn, Product } from '@opencals/storefront-sdk';
 
 export function formatDuration(seconds: number): string {
 	const hours = Math.floor(seconds / 3600);
@@ -19,4 +19,18 @@ export function formatPrice(amount: number, currency = 'USD'): string {
 
 export function getProductImage(product: Product | undefined): string | null {
 	return product?.image?.url ?? product?.images?.[0]?.url ?? null;
+}
+
+/**
+ * Compute the total price for a selected add-on at booking time.
+ * For `durationMultiplied` add-ons, the per-unit price is multiplied by `durationUnits`
+ * (the number of base-duration units the parent appointment spans).
+ */
+export function computeAddOnLineTotal(
+	addOn: Pick<AddOn, 'price' | 'durationMultiplied'>,
+	quantity: number,
+	durationUnits: number,
+): number {
+	const unit = addOn.durationMultiplied ? addOn.price * durationUnits : addOn.price;
+	return unit * quantity;
 }

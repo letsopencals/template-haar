@@ -133,26 +133,45 @@ export default function OrderDetailPage() {
 								Items
 							</h2>
 							<div className="mt-4 divide-y divide-charcoal/5">
-								{lineItems.map((item: OrderLineItem, i: number) => (
-									<div key={i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-										<div>
-											<p className="text-sm text-charcoal">
-												{item.appointment?.product?.title ?? 'Service'}
-											</p>
-											{item.quantity > 1 && (
-												<p className="text-xs text-warm-gray">Qty: {item.quantity}</p>
-											)}
-											{item.discountedUnitPrice < item.originalUnitPrice && (
-												<p className="text-xs text-warm-gray line-through">
-													{formatPrice(item.originalUnitPrice, currency)}
+								{lineItems.map((item: OrderLineItem, i: number) => {
+									const addOnLineItems = item.addOnLineItems ?? [];
+									return (
+										<div key={i} className="py-3 first:pt-0 last:pb-0">
+											<div className="flex items-center justify-between">
+												<div>
+													<p className="text-sm text-charcoal">
+														{item.appointment?.product?.title ?? 'Service'}
+													</p>
+													{item.quantity > 1 && (
+														<p className="text-xs text-warm-gray">Qty: {item.quantity}</p>
+													)}
+													{item.discountedUnitPrice < item.originalUnitPrice && (
+														<p className="text-xs text-warm-gray line-through">
+															{formatPrice(item.originalUnitPrice, currency)}
+														</p>
+													)}
+												</div>
+												<p className="text-sm font-medium text-charcoal">
+													{formatPrice(item.total, currency)}
 												</p>
+											</div>
+											{addOnLineItems.length > 0 && (
+												<div className="mt-2 ml-3 space-y-1 border-l border-dashed border-charcoal/20 pl-3">
+													{addOnLineItems.map((aoli, j) => (
+														<div key={j} className="flex justify-between text-xs text-warm-gray">
+															<span>
+																{aoli.addOn?.title ?? 'Add-on'} × {aoli.quantity}
+															</span>
+															<span className="font-medium text-charcoal">
+																{formatPrice(aoli.discountedUnitPrice * aoli.quantity, currency)}
+															</span>
+														</div>
+													))}
+												</div>
 											)}
 										</div>
-										<p className="text-sm font-medium text-charcoal">
-											{formatPrice(item.total, currency)}
-										</p>
-									</div>
-								))}
+									);
+								})}
 							</div>
 						</div>
 					)}

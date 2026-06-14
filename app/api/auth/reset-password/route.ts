@@ -1,6 +1,7 @@
 import '@/lib/opencals';
 import { AuthService } from '@opencals/storefront-sdk';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest) {
 	try {
@@ -8,7 +9,6 @@ export async function POST(request: NextRequest) {
 		await AuthService.resetPassword({ body });
 		return new NextResponse(null, { status: 204 });
 	} catch (err) {
-		console.error('Reset password error:', err);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		return handleApiError(err);
 	}
 }

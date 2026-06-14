@@ -2,6 +2,7 @@ import '@/lib/opencals';
 import { AppointmentService } from '@opencals/storefront-sdk';
 import { requireAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function PUT(
 	_request: NextRequest,
@@ -19,7 +20,6 @@ export async function PUT(
 		});
 		return NextResponse.json(data);
 	} catch (err) {
-		console.error('Appointment cancel error:', err);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		return handleApiError(err);
 	}
 }

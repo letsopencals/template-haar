@@ -28,8 +28,8 @@ export default function SettingsPage() {
 		defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
 	});
 
-	const profileSubmit = useFormSubmit<UpdateProfileFormValues>(profileForm);
-	const passwordSubmit = useFormSubmit<ChangePasswordFormValues>(passwordForm);
+	const profileSubmit = useFormSubmit<UpdateProfileFormValues>(profileForm, { url: '/api/account/profile', method: 'PUT' });
+	const passwordSubmit = useFormSubmit<ChangePasswordFormValues>(passwordForm, { url: '/api/account/password', method: 'PUT' });
 
 	// Fetch profile
 	useEffect(() => {
@@ -55,11 +55,7 @@ export default function SettingsPage() {
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const handleProfileSave = profileForm.handleSubmit(async (data) => {
-		const result = await profileSubmit.submit(
-			'/api/account/profile',
-			{ firstName: data.firstName, lastName: data.lastName },
-			{ method: 'PUT' },
-		);
+		const result = await profileSubmit.submit({ firstName: data.firstName, lastName: data.lastName });
 		if (result !== null) {
 			setProfileSuccess(true);
 			setTimeout(() => setProfileSuccess(false), 3000);
@@ -67,11 +63,7 @@ export default function SettingsPage() {
 	});
 
 	const handlePasswordChange = passwordForm.handleSubmit(async (data) => {
-		const result = await passwordSubmit.submit(
-			'/api/account/password',
-			{ currentPassword: data.currentPassword, newPassword: data.newPassword },
-			{ method: 'PUT' },
-		);
+		const result = await passwordSubmit.submit({ currentPassword: data.currentPassword, newPassword: data.newPassword });
 		if (result !== null) {
 			setPasswordSuccess(true);
 			passwordForm.reset();

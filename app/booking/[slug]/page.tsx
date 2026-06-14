@@ -1,179 +1,25 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { Product, CurrentAvailabilitySlot } from '@opencals/storefront-sdk';
-import { formatDuration, formatPrice, getProductImage } from '@/lib/format';
-import { useDateFormatter } from '@/hooks/use-date-formatter';
+import { computeAddOnLineTotal, formatDuration, formatPrice, getProductImage } from '@/lib/format';
+import { BOOKING_STEPS, STEP_LABELS, type BookingStep } from '@/lib/booking-constants';
 import { DatePicker } from '@/components/booking/date-picker';
 import { TimeSlots } from '@/components/booking/time-slots';
 import { StaffSelector } from '@/components/booking/staff-selector';
 import { LocationSelector } from '@/components/booking/location-selector';
-import { useCart } from '@/contexts/cart-context';
-import { useLocation } from '@/contexts/location-context';
-
-type BookingStep = 'date' | 'time' | 'confirm';
+import { AddOnsSelector } from '@/components/booking/addons-selector';
+import { useBookingFlow } from '@/hooks/use-booking-flow';
+import { useSettings } from '@/contexts/settings-context';
 
 export default function BookingPage() {
 	const params = useParams();
 	const slug = params.slug as string;
-	const { cartId, setCart } = useCart();
-	const { selectedLocationId: globalLocationId } = useLocation();
+	const { currency } = useSettings();
+	const flow = useBookingFlow(slug);
 
-	const [product, setProduct] = useState<Product | null>(null);
-	const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	// Booking state
-	const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null); // Top-level filter (triggers re-fetch)
-	const [confirmedStaffId, setConfirmedStaffId] = useState<string | null>(null); // Slot-level pick (no re-fetch)
-	const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
-	const [selectedDate, setSelectedDate] = useState<string | null>(null);
-	const [slots, setSlots] = useState<CurrentAvailabilitySlot[]>([]);
-	const [slotsLoading, setSlotsLoading] = useState(false);
-	const [selectedSlot, setSelectedSlot] = useState<CurrentAvailabilitySlot | null>(null);
-	const [attendees, setAttendees] = useState(1);
-	const [booking, setBooking] = useState(false);
-	const [bookingSuccess, setBookingSuccess] = useState(false);
-	const [step, setStep] = useState<BookingStep>('date');
-
-	const { formatCustom, formatTimeRange, timezone } = useDateFormatter();
-
-	// Compute active variant (the variant being booked)
-	const variants = product?.variants ?? [];
-	const hasVariants = variants.length > 0;
-	const activeVariant: Product | null = hasVariants
-		? variants.find((v) => v.id === selectedVariantId) || null
-		: product;
-
-	// The final staff ID used for booking: either top-level selection or slot-level confirmation
-	const finalStaffId = selectedStaffId ?? confirmedStaffId;
-
-	// Staff members filtered by selected location
-	const staffForLocation = (activeVariant?.staffMembers ?? []).filter((staff) => {
-		if (!selectedLocationId) return true;
-		// Staff member has a locations relation — filter to those at the selected location
-		const staffLocations = (staff as { locations?: { id: string }[] }).locations;
-		if (!staffLocations) return true; // If no locations relation, show all
-		return staffLocations.some((l) => l.id === selectedLocationId);
-	});
-
-	// Whether staff selection is required before booking
-	const needsStaffSelection = staffForLocation.length > 0 && !finalStaffId;
-
-	// Reset booking state when variant changes, auto-select location
-	useEffect(() => {
-		setSelectedStaffId(null);
-		setConfirmedStaffId(null);
-		setSelectedDate(null);
-		setSelectedSlot(null);
-		setSlots([]);
-		setBookingSuccess(false);
-		setStep('date');
-
-		// Auto-select location: prefer global context, else first available
-		const variantLocations = activeVariant?.locations ?? [];
-		const contextMatch = variantLocations.find((l) => l.id === globalLocationId);
-		setSelectedLocationId(contextMatch?.id ?? variantLocations[0]?.id ?? null);
-	}, [selectedVariantId, activeVariant, globalLocationId]);
-
-	// Fetch product
-	useEffect(() => {
-		async function fetchProduct() {
-			try {
-				const res = await fetch(`/api/products/${slug}`);
-				if (!res.ok) throw new Error('Not found');
-				const data = await res.json();
-				setProduct(data);
-			} catch {
-				setError('Service not found.');
-			} finally {
-				setLoading(false);
-			}
-		}
-		fetchProduct();
-	}, [slug]);
-
-	// Fetch availability when date or filters change
-	useEffect(() => {
-		if (!activeVariant || !selectedDate) return;
-
-		const variantSlug = activeVariant.slug;
-		setSlotsLoading(true);
-		setSelectedSlot(null);
-		setStep('time');
-
-		async function fetchSlots() {
-			try {
-				const params = new URLSearchParams({ date: selectedDate!, timezone });
-				if (selectedStaffId) params.set('staffMemberId', selectedStaffId);
-				if (selectedLocationId) params.set('locationId', selectedLocationId);
-
-				const res = await fetch(`/api/products/${variantSlug}/availability?${params}`);
-				if (!res.ok) throw new Error('Failed');
-				const data = await res.json();
-				setSlots(Array.isArray(data) ? data : []);
-			} catch {
-				setSlots([]);
-			} finally {
-				setSlotsLoading(false);
-			}
-		}
-		fetchSlots();
-	}, [activeVariant, selectedDate, timezone, selectedStaffId, selectedLocationId]);
-
-	const handleSlotSelect = useCallback((slot: CurrentAvailabilitySlot) => {
-		setSelectedSlot(slot);
-		setConfirmedStaffId(null); // Reset slot-level staff pick for new slot
-		setStep('confirm');
-	}, []);
-
-	const handleBooking = useCallback(async () => {
-		if (!activeVariant || !selectedSlot) return;
-
-		setBooking(true);
-		setError(null);
-
-		try {
-			const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-			if (cartId) headers['X-Cart-Id'] = cartId;
-
-			const res = await fetch('/api/book', {
-				method: 'POST',
-				headers,
-				body: JSON.stringify({
-					slot: {
-						productId: activeVariant.id,
-						fromDate: selectedSlot.fromDate,
-						fromTime: selectedSlot.fromTime,
-						toDate: selectedSlot.toDate,
-						toTime: selectedSlot.toTime,
-						staffMemberId: finalStaffId ?? selectedSlot.staffMemberIds?.[0] ?? null,
-						locationId: selectedLocationId ?? selectedSlot.locationIds?.[0] ?? null,
-					},
-					numberOfAttendees: attendees,
-				}),
-			});
-
-			if (!res.ok) {
-				const data = await res.json();
-				throw new Error(data.error || 'Booking failed');
-			}
-
-			const data = await res.json();
-			if (data.cart) setCart(data.cart);
-
-			setBookingSuccess(true);
-		} catch (err: unknown) {
-			setError(err instanceof Error ? err.message : 'Booking failed. Please try again.');
-			setBooking(false);
-		}
-	}, [activeVariant, selectedSlot, attendees, cartId, setCart, finalStaffId, selectedLocationId]);
-
-	if (loading) {
+	if (flow.loading) {
 		return (
 			<div className="bg-white pt-32 pb-20 lg:pt-40">
 				<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
@@ -198,11 +44,11 @@ export default function BookingPage() {
 		);
 	}
 
-	if (error && !product) {
+	if (flow.error && !flow.product) {
 		return (
 			<div className="bg-white pt-32 pb-20 lg:pt-40">
 				<div className="mx-auto max-w-[1400px] px-6 text-center lg:px-10">
-					<p className="text-warm-gray">{error}</p>
+					<p className="text-warm-gray">{flow.error}</p>
 					<Link
 						href="/services"
 						className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-accent hover:underline"
@@ -214,9 +60,9 @@ export default function BookingPage() {
 		);
 	}
 
-	if (!product) return null;
+	if (!flow.product) return null;
 
-	const imageUrl = getProductImage(product);
+	const imageUrl = getProductImage(flow.product);
 
 	return (
 		<>
@@ -238,7 +84,7 @@ export default function BookingPage() {
 							Back to Services
 						</Link>
 						<h1 className="heading-display mt-6 text-5xl text-charcoal md:text-6xl lg:text-7xl">
-							{product.title}
+							{flow.product.title}
 						</h1>
 					</motion.div>
 				</div>
@@ -257,21 +103,21 @@ export default function BookingPage() {
 						>
 							<div className="aspect-[4/3] overflow-hidden">
 								{imageUrl ? (
-									<img src={imageUrl} alt={product.title ?? 'Service'} className="h-full w-full object-cover" />
+									<img src={imageUrl} alt={flow.product.title ?? 'Service'} className="h-full w-full object-cover" />
 								) : (
 									<div className="image-placeholder h-full w-full" />
 								)}
 							</div>
 
 							{/* Variant tabs */}
-							{hasVariants && variants.length > 1 && (
+							{flow.hasVariants && flow.variants.length > 1 && (
 								<div className="mt-6 flex flex-wrap gap-2">
-									{variants.map((v) => (
+									{flow.variants.map((v) => (
 										<button
 											key={v.id}
-											onClick={() => setSelectedVariantId(v.id)}
+											onClick={() => flow.setSelectedVariantId(v.id)}
 											className={`border px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition-all ${
-												(activeVariant?.id ?? variants[0]?.id) === v.id
+												(flow.activeVariant?.id ?? flow.variants[0]?.id) === v.id
 													? 'border-charcoal bg-charcoal text-white'
 													: 'border-charcoal/10 text-charcoal hover:border-charcoal/30'
 											}`}
@@ -283,22 +129,22 @@ export default function BookingPage() {
 							)}
 
 							<div className="mt-8">
-								{(activeVariant?.description ?? product.description) && (
+								{(flow.activeVariant?.description ?? flow.product.description) && (
 									<p className="text-base leading-relaxed text-warm-gray">
-										{activeVariant?.description ?? product.description}
+										{flow.activeVariant?.description ?? flow.product.description}
 									</p>
 								)}
 								<div className="mt-6 space-y-0 border-t border-charcoal/10">
 									<div className="flex items-center justify-between border-b border-charcoal/10 py-4">
 										<span className="text-sm text-warm-gray">Duration</span>
 										<span className="text-sm font-semibold text-charcoal">
-											{formatDuration(activeVariant?.duration ?? product.duration)}
+											{formatDuration(flow.activeVariant?.duration ?? flow.product.duration)}
 										</span>
 									</div>
 									<div className="flex items-center justify-between border-b border-charcoal/10 py-4">
 										<span className="text-sm text-warm-gray">Price</span>
 										<span className="text-sm font-semibold text-charcoal">
-											{formatPrice(activeVariant?.price ?? product.price)}
+											{formatPrice(flow.activeVariant?.price ?? flow.product.price, currency)}
 										</span>
 									</div>
 								</div>
@@ -314,64 +160,36 @@ export default function BookingPage() {
 						>
 							<div className="sticky top-28">
 								{/* Step indicators */}
-								<div className="mb-8 flex items-center gap-3 sm:gap-4">
-									{(['date', 'time', 'confirm'] as BookingStep[]).map((s, i) => {
-										const stepOrder = ['date', 'time', 'confirm'];
-										const currentIdx = stepOrder.indexOf(step);
-										return (
-											<div key={s} className="flex items-center gap-3 sm:gap-4">
-												<div
-													className={`flex h-8 w-8 items-center justify-center text-xs font-semibold transition-colors ${
-														step === s
-															? 'bg-charcoal text-white'
-															: i < currentIdx
-																? 'bg-accent text-white'
-																: 'bg-cream text-warm-gray'
-													}`}
-												>
-													{i + 1}
-												</div>
-												<span
-													className={`hidden text-xs font-medium uppercase tracking-[0.15em] sm:block ${
-														step === s ? 'text-charcoal' : 'text-warm-gray'
-													}`}
-												>
-													{s === 'date' ? 'Select Date' : s === 'time' ? 'Choose Time' : 'Confirm'}
-												</span>
-												{i < 2 && <div className="h-px w-4 bg-charcoal/10 sm:w-8" />}
-											</div>
-										);
-									})}
-								</div>
+								<BookingStepIndicator currentStep={flow.step} />
 
 								{/* Error banner */}
-								{error && (
+								{flow.error && (
 									<div className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-										{error}
-										<button onClick={() => setError(null)} className="ml-2 font-medium underline">
+										{flow.error}
+										<button onClick={() => flow.setError(null)} className="ml-2 font-medium underline">
 											Dismiss
 										</button>
 									</div>
 								)}
 
-								{/* Location selector (always first, required) */}
-								{activeVariant?.locations && activeVariant.locations.length > 0 && (
+								{/* Location selector */}
+								{flow.activeVariant?.locations && flow.activeVariant.locations.length > 0 && (
 									<div className="mb-6">
 										<LocationSelector
-											locations={activeVariant.locations}
-											selected={selectedLocationId ?? activeVariant.locations[0]?.id ?? null}
-											onSelect={setSelectedLocationId}
+											locations={flow.activeVariant.locations}
+											selected={flow.selectedLocationId ?? flow.activeVariant.locations[0]?.id ?? null}
+											onSelect={flow.setSelectedLocationId}
 										/>
 									</div>
 								)}
 
 								{/* Staff selector */}
-								{staffForLocation.length > 0 && (
+								{flow.staffForLocation.length > 0 && (
 									<div className="mb-6">
 										<StaffSelector
-											staffMembers={staffForLocation}
-											selected={selectedStaffId}
-											onSelect={setSelectedStaffId}
+											staffMembers={flow.staffForLocation}
+											selected={flow.selectedStaffId}
+											onSelect={flow.setSelectedStaffId}
 										/>
 									</div>
 								)}
@@ -382,12 +200,12 @@ export default function BookingPage() {
 										Select a Date
 									</h3>
 									<div className="mt-4">
-										<DatePicker selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+										<DatePicker selectedDate={flow.selectedDate} onDateSelect={flow.setSelectedDate} />
 									</div>
 								</div>
 
 								{/* Time slots */}
-								{selectedDate && (
+								{flow.selectedDate && (
 									<motion.div
 										initial={{ opacity: 0, height: 0 }}
 										animate={{ opacity: 1, height: 'auto' }}
@@ -399,21 +217,21 @@ export default function BookingPage() {
 										</h3>
 										<div className="mt-4">
 											<TimeSlots
-												slots={slots}
-												selectedSlot={selectedSlot}
-												onSlotSelect={handleSlotSelect}
-												loading={slotsLoading}
-												timezone={timezone}
-												staffMembers={staffForLocation}
+												slots={flow.slots}
+												selectedSlot={flow.selectedSlot}
+												onSlotSelect={flow.handleSlotSelect}
+												loading={flow.slotsLoading}
+												timezone={flow.timezone}
+												staffMembers={flow.staffForLocation}
 											/>
 										</div>
 									</motion.div>
 								)}
 
 								{/* Staff selection after slot pick (when top-level is "Any") */}
-								{selectedSlot && !selectedStaffId && staffForLocation.length > 0 && (() => {
-									const slotStaff = staffForLocation.filter(
-										(s) => selectedSlot.staffMemberIds?.includes(s.id),
+								{flow.selectedSlot && !flow.selectedStaffId && flow.staffForLocation.length > 0 && (() => {
+									const slotStaff = flow.staffForLocation.filter(
+										(s) => flow.selectedSlot!.staffMemberIds?.includes(s.id),
 									);
 									if (slotStaff.length === 0) return null;
 									return (
@@ -425,15 +243,15 @@ export default function BookingPage() {
 										>
 											<StaffSelector
 												staffMembers={slotStaff}
-												selected={confirmedStaffId}
-												onSelect={setConfirmedStaffId}
+												selected={flow.confirmedStaffId}
+												onSelect={flow.setConfirmedStaffId}
 											/>
 										</motion.div>
 									);
 								})()}
 
 								{/* Attendees selector */}
-								{(activeVariant?.maxAttendees ?? product.maxAttendees) > 1 && selectedSlot && (
+								{(flow.activeVariant?.maxAttendees ?? flow.product.maxAttendees) > 1 && flow.selectedSlot && (
 									<motion.div
 										initial={{ opacity: 0, height: 0 }}
 										animate={{ opacity: 1, height: 'auto' }}
@@ -445,16 +263,16 @@ export default function BookingPage() {
 										</h3>
 										<div className="mt-4 flex items-center gap-4">
 											<button
-												onClick={() => setAttendees((a) => Math.max(1, a - 1))}
+												onClick={() => flow.setAttendees((a) => Math.max(1, a - 1))}
 												className="flex h-10 w-10 items-center justify-center border border-charcoal/10 text-charcoal transition-colors hover:bg-cream"
 											>
 												-
 											</button>
-											<span className="w-12 text-center text-lg font-semibold text-charcoal">{attendees}</span>
+											<span className="w-12 text-center text-lg font-semibold text-charcoal">{flow.attendees}</span>
 											<button
 												onClick={() =>
-													setAttendees((a) =>
-														Math.min((activeVariant?.maxAttendees ?? product.maxAttendees) - (selectedSlot?.attendees ?? 0), a + 1),
+													flow.setAttendees((a) =>
+														Math.min((flow.activeVariant?.maxAttendees ?? flow.product!.maxAttendees) - (flow.selectedSlot?.attendees ?? 0), a + 1),
 													)
 												}
 												className="flex h-10 w-10 items-center justify-center border border-charcoal/10 text-charcoal transition-colors hover:bg-cream"
@@ -462,14 +280,42 @@ export default function BookingPage() {
 												+
 											</button>
 											<span className="text-xs text-warm-gray">
-												(max {(activeVariant?.maxAttendees ?? product.maxAttendees) - (selectedSlot?.attendees ?? 0)} available)
+												(max {(flow.activeVariant?.maxAttendees ?? flow.product.maxAttendees) - (flow.selectedSlot?.attendees ?? 0)} available)
 											</span>
 										</div>
 									</motion.div>
 								)}
 
+								{/* Add-ons step */}
+								{flow.selectedSlot && !flow.needsStaffSelection && flow.step === 'add-ons' && (
+									<motion.div
+										initial={{ opacity: 0, y: 20 }}
+										animate={{ opacity: 1, y: 0 }}
+										transition={{ duration: 0.3 }}
+										className="mt-6"
+									>
+										<AddOnsSelector
+											addOns={flow.availableAddOns}
+											loading={flow.addOnsLoading}
+											selected={flow.selectedAddOns}
+											bookedDurationUnits={flow.bookedDurationUnits}
+											currency={currency}
+											onChange={flow.updateAddOnQuantity}
+										/>
+										<button
+											onClick={() => flow.setStep('confirm')}
+											className="mt-6 flex w-full items-center justify-center gap-3 bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
+										>
+											Continue
+											<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+												<path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+											</svg>
+										</button>
+									</motion.div>
+								)}
+
 								{/* Booking summary */}
-								{selectedSlot && !needsStaffSelection && (
+								{flow.selectedSlot && !flow.needsStaffSelection && flow.step === 'confirm' && (
 									<motion.div
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
@@ -483,11 +329,11 @@ export default function BookingPage() {
 											<div className="flex justify-between text-sm">
 												<span className="text-warm-gray">Service</span>
 												<span className="text-right font-medium text-charcoal">
-													{hasVariants && product ? `${product.title} — ${activeVariant?.title}` : (activeVariant?.title ?? product?.title)}
+													{flow.hasVariants && flow.product ? `${flow.product.title} — ${flow.activeVariant?.title}` : (flow.activeVariant?.title ?? flow.product?.title)}
 												</span>
 											</div>
 											{(() => {
-												const staffMember = staffForLocation.find((s) => s.id === finalStaffId);
+												const staffMember = flow.staffForLocation.find((s) => s.id === flow.finalStaffId);
 												return staffMember ? (
 													<div className="flex justify-between text-sm">
 														<span className="text-warm-gray">Stylist</span>
@@ -496,7 +342,7 @@ export default function BookingPage() {
 												) : null;
 											})()}
 											{(() => {
-												const location = activeVariant?.locations?.find((l) => l.id === selectedLocationId);
+												const location = flow.activeVariant?.locations?.find((l) => l.id === flow.selectedLocationId);
 												return location ? (
 													<div className="flex justify-between text-sm">
 														<span className="text-warm-gray">Location</span>
@@ -507,39 +353,58 @@ export default function BookingPage() {
 											<div className="flex justify-between text-sm">
 												<span className="text-warm-gray">Date</span>
 												<span className="font-medium text-charcoal">
-													{formatCustom(selectedDate + 'T00:00:00', 'dddd, MMMM D, YYYY')}
+													{flow.formatCustom(flow.selectedDate + 'T00:00:00', 'dddd, MMMM D, YYYY')}
 												</span>
 											</div>
 											<div className="flex justify-between text-sm">
 												<span className="text-warm-gray">Time</span>
 												<span className="font-medium text-charcoal">
 													{(() => {
-														const [start, end] = formatTimeRange(selectedSlot.fromDate, selectedSlot.fromTime, selectedSlot.toDate, selectedSlot.toTime);
+														const [start, end] = flow.formatTimeRange(flow.selectedSlot!.fromDate, flow.selectedSlot!.fromTime, flow.selectedSlot!.toDate, flow.selectedSlot!.toTime);
 														return `${start} - ${end}`;
 													})()}
 												</span>
 											</div>
 											<div className="flex justify-between text-sm">
 												<span className="text-warm-gray">Duration</span>
-												<span className="font-medium text-charcoal">{formatDuration(activeVariant?.duration ?? product.duration)}</span>
+												<span className="font-medium text-charcoal">{formatDuration(flow.activeVariant?.duration ?? flow.product.duration)}</span>
 											</div>
-											{attendees > 1 && (
+											{flow.attendees > 1 && (
 												<div className="flex justify-between text-sm">
 													<span className="text-warm-gray">Attendees</span>
-													<span className="font-medium text-charcoal">{attendees}</span>
+													<span className="font-medium text-charcoal">{flow.attendees}</span>
+												</div>
+											)}
+											{flow.selectedAddOns.size > 0 && (
+												<div className="border-t border-charcoal/10 pt-3 space-y-1.5">
+													<p className="text-xs font-semibold uppercase tracking-[0.15em] text-warm-gray">Add-ons</p>
+													{Array.from(flow.selectedAddOns.entries()).map(([addOnId, qty]) => {
+														const addOn = flow.availableAddOns.find((a) => a.id === addOnId);
+														if (!addOn) return null;
+														const lineTotal = computeAddOnLineTotal(addOn, qty, flow.bookedDurationUnits);
+														return (
+															<div key={addOnId} className="flex justify-between text-xs">
+																<span className="text-warm-gray">
+																	{addOn.title ?? addOn.slug}
+																	{!addOn.durationMultiplied && qty > 1 && ` × ${qty}`}
+																</span>
+																<span className="font-medium text-charcoal">{formatPrice(lineTotal, currency)}</span>
+															</div>
+														);
+													})}
 												</div>
 											)}
 											<div className="border-t border-charcoal/10 pt-3">
 												<div className="flex justify-between">
 													<span className="text-sm font-semibold text-charcoal">Total</span>
 													<span className="text-lg font-bold text-charcoal">
-														{formatPrice((activeVariant?.price ?? product.price) * attendees)}
+														{formatPrice((flow.activeVariant?.price ?? flow.product.price) * flow.attendees + flow.addOnsTotal, currency)}
 													</span>
 												</div>
 											</div>
 										</div>
 
-										{bookingSuccess ? (
+										{flow.bookingSuccess ? (
 											<div className="mt-6 space-y-3">
 												<div className="flex items-center gap-2 text-sm font-medium text-green-700">
 													<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -565,11 +430,11 @@ export default function BookingPage() {
 											</div>
 										) : (
 											<button
-												onClick={handleBooking}
-												disabled={booking}
+												onClick={flow.handleBooking}
+												disabled={flow.booking}
 												className="mt-6 flex w-full items-center justify-center gap-3 bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent disabled:opacity-50"
 											>
-												{booking ? (
+												{flow.booking ? (
 													<>
 														<svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
 															<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -599,5 +464,37 @@ export default function BookingPage() {
 				</div>
 			</section>
 		</>
+	);
+}
+
+function BookingStepIndicator({ currentStep }: { currentStep: BookingStep }) {
+	const currentIdx = BOOKING_STEPS.indexOf(currentStep);
+
+	return (
+		<div className="mb-8 flex items-center gap-3 sm:gap-4">
+			{BOOKING_STEPS.map((s, i) => (
+				<div key={s} className="flex items-center gap-2 sm:gap-3">
+					<div
+						className={`flex h-8 w-8 items-center justify-center text-xs font-semibold transition-colors ${
+							currentStep === s
+								? 'bg-charcoal text-white'
+								: i < currentIdx
+									? 'bg-accent text-white'
+									: 'bg-cream text-warm-gray'
+						}`}
+					>
+						{i + 1}
+					</div>
+					<span
+						className={`hidden text-xs font-medium uppercase tracking-[0.15em] sm:block ${
+							currentStep === s ? 'text-charcoal' : 'text-warm-gray'
+						}`}
+					>
+						{STEP_LABELS[s]}
+					</span>
+					{i < BOOKING_STEPS.length - 1 && <div className="h-px w-3 bg-charcoal/10 sm:w-6" />}
+				</div>
+			))}
+		</div>
 	);
 }

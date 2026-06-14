@@ -1,6 +1,7 @@
 'use client';
 
 import type { StaffMember } from '@opencals/storefront-sdk';
+import { getStaffImageUrl, getStaffInitials } from '@/lib/staff-utils';
 
 interface StaffAvatarsProps {
 	staffMembers: StaffMember[];
@@ -15,16 +16,6 @@ const sizeClasses = {
 	lg: 'h-12 w-12 text-sm',
 };
 
-function getInitials(staff: StaffMember): string {
-	return (staff.firstName?.[0] ?? staff.email?.[0] ?? '?').toUpperCase();
-}
-
-function getImageUrl(staff: StaffMember): string | null {
-	// StaffMember might have an image relation with url
-	const img = staff.image as { url?: string } | undefined;
-	return img?.url ?? null;
-}
-
 export function StaffAvatars({ staffMembers, maxVisible = 4, size = 'md', onClick }: StaffAvatarsProps) {
 	if (staffMembers.length === 0) return null;
 
@@ -38,7 +29,7 @@ export function StaffAvatars({ staffMembers, maxVisible = 4, size = 'md', onClic
 	return (
 		<div className="group flex items-center">
 			{visibleStaff.map((staff, i) => {
-				const imageUrl = getImageUrl(staff);
+				const imageUrl = getStaffImageUrl(staff);
 				return (
 					<button
 						key={staff.id}
@@ -50,7 +41,7 @@ export function StaffAvatars({ staffMembers, maxVisible = 4, size = 'md', onClic
 						{imageUrl ? (
 							<img src={imageUrl} alt="" className="h-full w-full object-cover object-top" />
 						) : (
-							getInitials(staff)
+							getStaffInitials(staff)
 						)}
 					</button>
 				);

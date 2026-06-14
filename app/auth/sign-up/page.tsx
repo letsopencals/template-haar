@@ -18,10 +18,10 @@ export default function SignUpPage() {
 		defaultValues: { email: '', password: '', firstName: '', lastName: '' },
 	});
 
-	const { submit, isSubmitting, error } = useFormSubmit(form);
+	const { submit, isSubmitting, error } = useFormSubmit(form, { url: '/api/auth/sign-up' });
 
 	const onSubmit = async (data: SignUpFormValues) => {
-		const result = await submit('/api/auth/sign-up', {
+		const result = await submit({
 			email: data.email,
 			password: data.password,
 			first_name: data.firstName,

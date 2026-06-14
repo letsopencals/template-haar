@@ -1,20 +1,12 @@
 'use client';
 
 import type { StaffMember } from '@opencals/storefront-sdk';
+import { getStaffImageUrl, getStaffInitials } from '@/lib/staff-utils';
 
 interface StaffSelectorProps {
 	staffMembers: StaffMember[];
 	selected: string | null;
 	onSelect: (staffMemberId: string | null) => void;
-}
-
-function getImageUrl(staff: StaffMember): string | null {
-	const img = staff.image as { url?: string } | undefined;
-	return img?.url ?? null;
-}
-
-function getInitials(staff: StaffMember): string {
-	return (staff.firstName?.[0] ?? staff.email?.[0] ?? '?').toUpperCase();
 }
 
 export function StaffSelector({ staffMembers, selected, onSelect }: StaffSelectorProps) {
@@ -45,7 +37,7 @@ export function StaffSelector({ staffMembers, selected, onSelect }: StaffSelecto
 				</button>
 
 				{staffMembers.map((staff) => {
-					const imageUrl = getImageUrl(staff);
+					const imageUrl = getStaffImageUrl(staff);
 					const name = staff.firstName ?? 'Staff';
 					const isSelected = selected === staff.id;
 
@@ -66,7 +58,7 @@ export function StaffSelector({ staffMembers, selected, onSelect }: StaffSelecto
 								{imageUrl ? (
 									<img src={imageUrl} alt={name} className="h-full w-full object-cover object-top" />
 								) : (
-									<span className="text-charcoal">{getInitials(staff)}</span>
+									<span className="text-charcoal">{getStaffInitials(staff)}</span>
 								)}
 							</div>
 							<span className={`w-14 truncate text-center text-[10px] font-medium ${isSelected ? 'text-charcoal' : 'text-warm-gray'}`}>

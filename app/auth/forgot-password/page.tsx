@@ -18,10 +18,10 @@ export default function ForgotPasswordPage() {
 		defaultValues: { email: '' },
 	});
 
-	const { submit, isSubmitting } = useFormSubmit(form);
+	const { submit, isSubmitting } = useFormSubmit(form, { url: '/api/auth/forgot-password' });
 
 	const onSubmit = async (data: ForgotPasswordFormValues) => {
-		await submit('/api/auth/forgot-password', { email: data.email });
+		await submit({ email: data.email });
 		setSent(true);
 	};
 

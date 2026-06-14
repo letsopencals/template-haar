@@ -163,6 +163,35 @@ export default function AppointmentDetailPage() {
 						</div>
 					</div>
 
+					{/* Add-ons */}
+					{(() => {
+						const addOns = appointment.addOns ?? [];
+						if (!addOns.length) return null;
+						const currency = appointment.store?.currencyCode ?? 'USD';
+						return (
+							<div className="border border-charcoal/10 p-6">
+								<h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">
+									Add-ons
+								</h2>
+								<div className="mt-4 divide-y divide-charcoal/5">
+									{addOns.map((a, idx) => (
+										<div key={a.id ?? `${a.addOnId}-${idx}`} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+											<span className="text-sm font-medium text-charcoal">
+												{a.addOn?.title ?? 'Add-on'}
+												{(a.quantity ?? 1) > 1 && ` × ${a.quantity}`}
+											</span>
+											{a.addOn?.price != null && (
+												<span className="text-sm text-warm-gray">
+													{formatPrice((a.addOn.price ?? 0) * (a.quantity ?? 1), currency)}
+												</span>
+											)}
+										</div>
+									))}
+								</div>
+							</div>
+						);
+					})()}
+
 					{/* Actions */}
 					{(canCancel || canReschedule) && (
 						<div className="border border-charcoal/10 p-6">

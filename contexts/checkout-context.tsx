@@ -10,30 +10,10 @@ import type {
 	CheckoutStartResponse,
 	SubmitCheckout,
 	CartItem,
-	Product,
+	CheckoutQuestion,
 } from '@opencals/storefront-sdk';
 
 export type CheckoutStep = 'customer' | 'questions' | 'payment-select' | 'payment';
-
-export interface CheckoutQuestion {
-	id: string;
-	title: string;
-	description?: string;
-	type: string;
-	required: boolean;
-	options?: { label: string; value: string }[];
-}
-
-/** CartItem with expanded appointment relation (returned by API but not in SDK type) */
-export interface CartItemWithAppointment extends CartItem {
-	appointment?: {
-		product?: Pick<Product, 'title' | 'duration'>;
-		fromDate: string;
-		fromTime?: string;
-		toDate?: string;
-		toTime?: string;
-	};
-}
 
 interface CheckoutContextValue {
 	// State
@@ -62,7 +42,7 @@ interface CheckoutContextValue {
 	paymentData: CheckoutStartResponse | null;
 
 	// Cart info
-	items: CartItemWithAppointment[];
+	items: CartItem[];
 	isExpired: boolean;
 	timeRemaining: number | null;
 	minutes: number | null;
@@ -322,7 +302,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		[cartHeaders, email, firstName, lastName, clearCart, router],
 	);
 
-	const items = (cart?.items ?? []) as CartItemWithAppointment[];
+	const items = (cart?.items ?? []) as CartItem[];
 	const isExpired = timeRemaining !== null && timeRemaining <= 0;
 	const minutes = timeRemaining !== null ? Math.floor(timeRemaining / 60) : null;
 	const seconds = timeRemaining !== null ? timeRemaining % 60 : null;

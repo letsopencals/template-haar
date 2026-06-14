@@ -31,10 +31,10 @@ function ResetPasswordContent() {
 		defaultValues: { password: '', confirmPassword: '' },
 	});
 
-	const { submit, isSubmitting, error } = useFormSubmit(form);
+	const { submit, isSubmitting, error } = useFormSubmit(form, { url: '/api/auth/reset-password' });
 
 	const onSubmit = async (data: ResetPasswordFormValues) => {
-		const result = await submit('/api/auth/reset-password', {
+		const result = await submit({
 			token,
 			new_password: data.password,
 		});

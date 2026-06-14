@@ -50,7 +50,7 @@ function ThankYouContent() {
 	const appointments = order?.appointments ?? [];
 	const lineItems: OrderLineItem[] = order?.lineItems ?? [];
 	const currency = order?.paymentCurrencyCode ?? 'USD';
-	const transactions = (order as unknown as { transactions?: OrderTransaction[] })?.transactions;
+	const transactions = order?.transactions;
 	const successTransaction = transactions?.find((t: OrderTransaction) => t.status === 'success');
 
 	return (
@@ -165,6 +165,27 @@ function ThankYouContent() {
 														</div>
 													)}
 
+													{/* Add-ons */}
+													{(() => {
+														const addOns = appt.addOns ?? [];
+														if (!addOns.length) return null;
+														return (
+															<div className="mt-3 border-t border-charcoal/10 pt-3 space-y-1">
+																<p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-warm-gray">
+																	Add-ons
+																</p>
+																{addOns.map((a, idx) => (
+																	<div key={a.id ?? `${a.addOnId}-${idx}`} className="flex items-center justify-between text-xs text-charcoal">
+																		<span>
+																			{a.addOn?.title ?? 'Add-on'}
+																			{(a.quantity ?? 1) > 1 && ` × ${a.quantity}`}
+																		</span>
+																	</div>
+																))}
+															</div>
+														);
+													})()}
+
 													{/* Attendees */}
 													{appt.numberOfAttendees > 1 && (
 														<div className="flex items-center gap-2 text-xs text-warm-gray">
@@ -233,21 +254,41 @@ function ThankYouContent() {
 								</h2>
 								{lineItems.length > 0 && (
 									<div className="mt-4 divide-y divide-charcoal/5">
-										{lineItems.map((item, i) => (
-											<div key={i} className="flex justify-between py-2">
-												<div>
-													<p className="text-sm text-charcoal">
-														{item.appointment?.product?.title ?? 'Service'}
-													</p>
-													{item.quantity > 1 && (
-														<p className="text-xs text-warm-gray">Qty: {item.quantity}</p>
+										{lineItems.map((item, i) => {
+											const addOnLineItems = item.addOnLineItems ?? [];
+											return (
+												<div key={i} className="py-2">
+													<div className="flex justify-between">
+														<div>
+															<p className="text-sm text-charcoal">
+																{item.appointment?.product?.title ?? 'Service'}
+															</p>
+															{item.quantity > 1 && (
+																<p className="text-xs text-warm-gray">Qty: {item.quantity}</p>
+															)}
+														</div>
+														<p className="text-sm font-medium text-charcoal">
+															{formatPrice(item.total ?? 0, currency)}
+														</p>
+													</div>
+													{addOnLineItems.length > 0 && (
+														<div className="mt-1 ml-2 space-y-0.5">
+															{addOnLineItems.map((aoli, j) => (
+																<div key={j} className="flex justify-between text-xs text-warm-gray">
+																	<span>
+																		{aoli.addOn?.title ?? 'Add-on'}
+																		{aoli.quantity > 1 && ` × ${aoli.quantity}`}
+																	</span>
+																	<span className="font-medium">
+																		{formatPrice(aoli.discountedUnitPrice * aoli.quantity, currency)}
+																	</span>
+																</div>
+															))}
+														</div>
 													)}
 												</div>
-												<p className="text-sm font-medium text-charcoal">
-													{formatPrice(item.total ?? 0, currency)}
-												</p>
-											</div>
-										))}
+											);
+										})}
 									</div>
 								)}
 

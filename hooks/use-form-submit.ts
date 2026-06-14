@@ -1,87 +1,48 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useEffect } from 'react';
 import type { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form';
-
-interface ApiErrorResponse {
-	error?: string;
-	errors?: Record<string, string>;
-}
+import { useApiRequest } from './use-api-request';
 
 interface UseFormSubmitOptions<TData> {
+	url: string;
+	method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+	headers?: Record<string, string>;
 	onSuccess?: (data: TData) => void;
 }
 
 interface UseFormSubmitResult<TData> {
-	submit: (url: string, body: unknown, options?: RequestInit) => Promise<TData | null>;
+	submit: (body: unknown) => Promise<TData | null>;
 	isSubmitting: boolean;
 	error: string | null;
 	clearError: () => void;
 }
 
-/**
- * Client-side form submission hook.
- * Bridges react-hook-form with API route submissions.
- * Sets field-level errors from API validation responses.
- */
-export function useFormSubmit<
-	TFormValues extends FieldValues,
-	TData = unknown,
->(
+export function useFormSubmit<TFormValues extends FieldValues, TData = unknown>(
 	form: UseFormReturn<TFormValues>,
-	options: UseFormSubmitOptions<TData> = {},
+	options: UseFormSubmitOptions<TData>,
 ): UseFormSubmitResult<TData> {
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const { url, method = 'POST', headers, onSuccess } = options;
 
-	const clearError = useCallback(() => setError(null), []);
+	const request = useApiRequest<TData>(url, {
+		method,
+		headers,
+		autoFetch: false,
+		onSuccess,
+	});
 
-	const submit = useCallback(
-		async (url: string, body: unknown, requestOptions: RequestInit = {}): Promise<TData | null> => {
-			setIsSubmitting(true);
-			setError(null);
-
-			try {
-				const res = await fetch(url, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(body),
-					...requestOptions,
-				});
-
-				const data = await res.json().catch(() => null);
-
-				if (!res.ok) {
-					const apiError = data as ApiErrorResponse | null;
-
-					// Set field-level errors from API validation
-					if (apiError?.errors) {
-						for (const [field, message] of Object.entries(apiError.errors)) {
-							form.setError(field as FieldPath<TFormValues>, {
-								type: 'manual',
-								message,
-							});
-						}
-					}
-
-					// Set global error
-					const errorMessage = apiError?.error || `Request failed (${res.status})`;
-					setError(errorMessage);
-					return null;
-				}
-
-				options.onSuccess?.(data as TData);
-				return data as TData;
-			} catch (err: unknown) {
-				const message = err instanceof Error ? err.message : 'Unknown error';
-				setError(message);
-				return null;
-			} finally {
-				setIsSubmitting(false);
+	useEffect(() => {
+		if (request.fieldErrors) {
+			for (const [field, message] of Object.entries(request.fieldErrors)) {
+				form.setError(field as FieldPath<TFormValues>, { type: 'server', message });
 			}
-		},
-		[form, options],
-	);
+		}
+	}, [request.fieldErrors, form]);
 
-	return { submit, isSubmitting, error, clearError };
+	return {
+		submit: request.execute,
+		isSubmitting: request.loading,
+		error: request.error,
+		clearError: request.reset,
+	};
 }

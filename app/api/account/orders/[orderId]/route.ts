@@ -2,6 +2,7 @@ import '@/lib/opencals';
 import { OrderService } from '@opencals/storefront-sdk';
 import { requireAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(
 	_request: NextRequest,
@@ -15,7 +16,6 @@ export async function GET(
 		const { data } = await OrderService.find({ path: { orderId }, headers: auth.headers });
 		return NextResponse.json(data);
 	} catch (err) {
-		console.error('Order GET error:', err);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		return handleApiError(err);
 	}
 }

@@ -1,6 +1,7 @@
 import '@/lib/opencals';
 import { ProductService } from '@opencals/storefront-sdk';
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api-error-handler';
 
 export async function GET(
 	_request: NextRequest,
@@ -12,10 +13,6 @@ export async function GET(
 		const { data } = await ProductService.getBySlug({ path: { slug } });
 		return NextResponse.json(data);
 	} catch (err) {
-		console.error('Product API error:', err);
-		return NextResponse.json(
-			{ error: 'Internal server error' },
-			{ status: 500 },
-		);
+		return handleApiError(err);
 	}
 }

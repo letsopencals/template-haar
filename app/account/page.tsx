@@ -7,12 +7,11 @@ import { formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 import type { Appointment, Order, CollectionMeta, AppointmentStatusType } from '@opencals/storefront-sdk';
 
-type OrderWithId = Order & { id: string };
 
 export default function AccountDashboard() {
 	const { data: session } = useSession();
 	const [appointments, setAppointments] = useState<Appointment[]>([]);
-	const [orders, setOrders] = useState<OrderWithId[]>([]);
+	const [orders, setOrders] = useState<Order[]>([]);
 	const [loading, setLoading] = useState(true);
 	const { formatCustom, formatTime, formatDate } = useDateFormatter();
 
@@ -29,7 +28,7 @@ export default function AccountDashboard() {
 					setAppointments(data.data ?? []);
 				}
 				if (ordersRes.ok) {
-					const data: { data: OrderWithId[]; meta: CollectionMeta } = await ordersRes.json();
+					const data: { data: Order[]; meta: CollectionMeta } = await ordersRes.json();
 					setOrders(data.data ?? []);
 				}
 			} catch {

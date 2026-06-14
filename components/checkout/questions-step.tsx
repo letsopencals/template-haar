@@ -19,57 +19,63 @@ export function QuestionsStep() {
 			<div className="border border-charcoal/10 p-6">
 				<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">Additional Information</h3>
 				<div className="mt-6 space-y-5">
-					{questions.map((q) => (
-						<div key={q.id}>
-							<label className="mb-1 block text-xs font-medium text-warm-gray">
-								{q.title} {q.required && <span className="text-accent">*</span>}
-							</label>
-							{q.description && <p className="mb-2 text-xs text-warm-gray/70">{q.description}</p>}
-							{q.type === 'DROPDOWN' && q.options ? (
-								<select
-									required={q.required}
-									value={answers[q.id] ?? ''}
-									onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-									className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none focus:border-charcoal"
-								>
-									<option value="">Select...</option>
-									{q.options.map((o) => (
-										<option key={o.value} value={o.value}>
-											{o.label}
-										</option>
-									))}
-								</select>
-							) : q.type === 'MULTI_LINE_TEXT' ? (
-								<textarea
-									required={q.required}
-									value={answers[q.id] ?? ''}
-									onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-									rows={3}
-									className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none focus:border-charcoal"
-								/>
-							) : q.type === 'CHECKBOX' ? (
-								<label className="flex items-center gap-2">
-									<input
-										type="checkbox"
-										checked={answers[q.id] === 'true'}
-										onChange={(e) =>
-											setAnswers((prev) => ({ ...prev, [q.id]: e.target.checked ? 'true' : 'false' }))
-										}
-										className="h-4 w-4 accent-accent"
-									/>
-									<span className="text-sm text-charcoal">Yes</span>
+					{[...questions].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((q) => {
+						const translation = q.translations?.[0];
+						const title = translation?.title ?? q.internalName;
+						const description = translation?.description;
+						const options = translation?.options;
+						return (
+							<div key={q.id}>
+								<label className="mb-1 block text-xs font-medium text-warm-gray">
+									{title} {q.required && <span className="text-accent">*</span>}
 								</label>
-							) : (
-								<input
-									type="text"
-									required={q.required}
-									value={answers[q.id] ?? ''}
-									onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
-									className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none focus:border-charcoal"
-								/>
-							)}
-						</div>
-					))}
+								{description && <p className="mb-2 text-xs text-warm-gray/70">{description}</p>}
+								{q.type === 'dropdown' && options ? (
+									<select
+										required={q.required}
+										value={answers[q.id] ?? ''}
+										onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+										className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none focus:border-charcoal"
+									>
+										<option value="">Select...</option>
+										{options.map((o) => (
+											<option key={o} value={o}>
+												{o}
+											</option>
+										))}
+									</select>
+								) : q.type === 'multi-line-text-field' ? (
+									<textarea
+										required={q.required}
+										value={answers[q.id] ?? ''}
+										onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+										rows={3}
+										className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none focus:border-charcoal"
+									/>
+								) : q.type === 'checkbox' ? (
+									<label className="flex items-center gap-2">
+										<input
+											type="checkbox"
+											checked={answers[q.id] === 'true'}
+											onChange={(e) =>
+												setAnswers((prev) => ({ ...prev, [q.id]: e.target.checked ? 'true' : 'false' }))
+											}
+											className="h-4 w-4 accent-accent"
+										/>
+										<span className="text-sm text-charcoal">Yes</span>
+									</label>
+								) : (
+									<input
+										type="text"
+										required={q.required}
+										value={answers[q.id] ?? ''}
+										onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+										className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none focus:border-charcoal"
+									/>
+								)}
+							</div>
+						);
+					})}
 				</div>
 			</div>
 
