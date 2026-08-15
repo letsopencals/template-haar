@@ -292,26 +292,39 @@ function ThankYouContent() {
 									</div>
 								)}
 
-								<div className="mt-4 space-y-2 border-t border-charcoal/10 pt-4">
-									<div className="flex justify-between text-sm">
-										<span className="text-warm-gray">Subtotal</span>
-										<span
-											className="text-charcoal">{formatPrice(order?.subtotal ?? 0, currency)}</span>
-									</div>
-									{(order?.totalTax ?? 0) > 0 && (
-										<div className="flex justify-between text-sm">
-											<span className="text-warm-gray">Tax</span>
-											<span
-												className="text-charcoal">{formatPrice(order?.totalTax ?? 0, currency)}</span>
+								{(() => {
+									const totalDiscount = (order?.lineItems ?? []).reduce((acc: number, item) => {
+										const base = (item.originalUnitPrice - item.discountedUnitPrice) * item.quantity;
+										const addOns = (item.addOnLineItems ?? []).reduce((a: number, ao) => a + (ao.originalUnitPrice - ao.discountedUnitPrice) * ao.quantity, 0);
+										return acc + base + addOns;
+									}, 0);
+									return (
+										<div className="mt-4 space-y-2 border-t border-charcoal/10 pt-4">
+											<div className="flex justify-between text-sm">
+												<span className="text-warm-gray">Subtotal</span>
+												<span className="text-charcoal">{formatPrice(order?.subtotal ?? 0, currency)}</span>
+											</div>
+											{totalDiscount > 0 && (
+												<div className="flex justify-between text-sm">
+													<span className="text-accent">Discounts</span>
+													<span className="font-medium text-accent">-{formatPrice(totalDiscount, currency)}</span>
+												</div>
+											)}
+											{(order?.totalTax ?? 0) > 0 && (
+												<div className="flex justify-between text-sm">
+													<span className="text-warm-gray">Tax</span>
+													<span className="text-charcoal">{formatPrice(order?.totalTax ?? 0, currency)}</span>
+												</div>
+											)}
+											<div className="flex justify-between border-t border-charcoal/10 pt-2">
+												<span className="text-sm font-semibold text-charcoal">Total</span>
+												<span className="text-lg font-bold text-charcoal">
+													{formatPrice(order?.total ?? 0, currency)}
+												</span>
+											</div>
 										</div>
-									)}
-									<div className="flex justify-between border-t border-charcoal/10 pt-2">
-										<span className="text-sm font-semibold text-charcoal">Total</span>
-										<span className="text-lg font-bold text-charcoal">
-											{formatPrice(order?.total ?? 0, currency)}
-										</span>
-									</div>
-								</div>
+									);
+								})()}
 							</div>
 
 							{/* Actions */}

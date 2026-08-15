@@ -188,6 +188,20 @@ export default function OrderDetailPage() {
 								<span className="text-warm-gray">Subtotal</span>
 								<span className="text-charcoal">{formatPrice(order.subtotal, currency)}</span>
 							</div>
+							{(() => {
+								const totalDiscount = (order.lineItems ?? []).reduce((acc: number, item: OrderLineItem) => {
+									const base = (item.originalUnitPrice - item.discountedUnitPrice) * item.quantity;
+									const addOns = (item.addOnLineItems ?? []).reduce((a: number, ao) => a + (ao.originalUnitPrice - ao.discountedUnitPrice) * ao.quantity, 0);
+									return acc + base + addOns;
+								}, 0);
+								if (totalDiscount <= 0) return null;
+								return (
+									<div className="flex justify-between text-sm">
+										<span className="text-accent">Discounts</span>
+										<span className="font-medium text-accent">-{formatPrice(totalDiscount, currency)}</span>
+									</div>
+								);
+							})()}
 							{order.totalTax > 0 && (
 								<div className="flex justify-between text-sm">
 									<span className="text-warm-gray">Tax</span>

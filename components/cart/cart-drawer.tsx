@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCart } from '@/contexts/cart-context';
 import { formatPrice, formatDuration } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
+import { useRef, useState } from 'react';
 
 interface CartDrawerProps {
 	open: boolean;
@@ -12,8 +13,34 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
-	const { cart, removeItem, updateAddOnQuantity, removeAddOnItem, timeRemaining } = useCart();
+	const { cart, removeItem, updateAddOnQuantity, removeAddOnItem, timeRemaining, applyDiscountCode, removeDiscountCode, discountCodeError, clearDiscountCodeError } = useCart();
 	const { formatCustom } = useDateFormatter();
+	const [promoOpen, setPromoOpen] = useState(false);
+	const [promoCode, setPromoCode] = useState('');
+	const [promoLoading, setPromoLoading] = useState(false);
+	const promoInputRef = useRef<HTMLInputElement>(null);
+
+	const handleApplyCode = async () => {
+		if (!promoCode.trim()) return;
+		setPromoLoading(true);
+		try {
+			const ok = await applyDiscountCode(promoCode.trim());
+			if (ok) {
+				setPromoCode('');
+				setPromoOpen(false);
+			}
+		} finally {
+			setPromoLoading(false);
+		}
+	};
+
+	const handlePromoToggle = () => {
+		clearDiscountCodeError();
+		setPromoOpen((v) => !v);
+		if (!promoOpen) {
+			setTimeout(() => promoInputRef.current?.focus(), 0);
+		}
+	};
 
 	const items = cart?.items ?? [];
 	const isExpired = timeRemaining !== null && timeRemaining <= 0;
@@ -207,6 +234,67 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
 						{/* Footer */}
 						{items.length > 0 && (
 							<div className="border-t border-charcoal/10 px-6 py-5">
+								{/* Applied discounts */}
+								{cart?.appliedDiscounts && cart.appliedDiscounts.length > 0 && (
+									<div className="mb-3 space-y-1">
+										{cart.appliedDiscounts.map((d) => (
+											<div key={d.id} className="flex items-center justify-between text-sm">
+												<div className="flex items-center gap-1 text-accent">
+													<span className="text-xs">{d.title}</span>
+													{d.code && (
+														<button
+															onClick={() => void removeDiscountCode()}
+															className="text-[10px] text-warm-gray underline hover:text-charcoal"
+														>
+															Remove
+														</button>
+													)}
+												</div>
+												<span className="text-sm font-medium text-accent">
+													-{formatPrice(d.totalAmount, cart?.paymentCurrencyCode)}
+												</span>
+											</div>
+										))}
+									</div>
+								)}
+
+								{/* Promo code */}
+								{!cart?.appliedDiscountCode && (
+									<div className="mb-3">
+										<button
+											onClick={handlePromoToggle}
+											className="text-xs font-medium uppercase tracking-[0.1em] text-warm-gray hover:text-charcoal"
+										>
+											{promoOpen ? '− Hide code' : '+ Have a promo code?'}
+										</button>
+										{promoOpen && (
+											<div className="mt-2 flex gap-2">
+												<input
+													ref={promoInputRef}
+													type="text"
+													value={promoCode}
+													onChange={(e) => { setPromoCode(e.target.value); clearDiscountCodeError(); }}
+													onKeyDown={(e) => { if (e.key === 'Enter') void handleApplyCode(); }}
+													placeholder="Enter code"
+													className="flex-1 border border-charcoal/20 bg-white px-3 py-1.5 text-xs text-charcoal placeholder:text-warm-gray focus:border-charcoal focus:outline-none"
+												/>
+												<button
+													onClick={() => void handleApplyCode()}
+													disabled={promoLoading || !promoCode.trim()}
+													className="border border-charcoal/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-charcoal transition-colors hover:bg-cream disabled:opacity-50"
+												>
+													{promoLoading ? '...' : 'Apply'}
+												</button>
+											</div>
+										)}
+										{discountCodeError && (
+											<p className="mt-1 text-xs text-red-600">
+												{discountCodeError.message ?? 'This code is not valid.'}
+											</p>
+										)}
+									</div>
+								)}
+
 								<div className="mb-4 flex justify-between">
 									<span className="text-sm font-semibold text-charcoal">Total</span>
 									<span className="text-lg font-bold text-charcoal">

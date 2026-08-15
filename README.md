@@ -4,7 +4,7 @@ A production-ready booking website for salons, spas, and service businesses. Bui
 
 **[View Live Demo](https://template-haar.vercel.app/)**
 
-![Homepage](docs/homepage-hero.png)
+![HAAR Salon — the storefront and booking flow, on tablet and mobile](docs/cover.png)
 
 ---
 
