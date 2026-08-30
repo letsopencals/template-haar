@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { CurrentAvailabilitySlot, Product } from '@opencals/storefront-sdk';
+import type { CurrentAvailabilitySlot, ProductListVariant } from '@opencals/storefront-sdk';
 
 interface UseAvailabilityOptions {
-	activeVariant: Product | null;
+	activeVariant: ProductListVariant | null;
 	timezone: string;
 	staffMemberId: string | null;
 	locationId: string | null;

@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
-import type { Appointment, Order, CollectionMeta, AppointmentStatusType } from '@opencals/storefront-sdk';
+import type { AppointmentListItemResponse as Appointment, OrderListItemResponse as Order, CollectionMeta, AppointmentStatusType } from '@opencals/storefront-sdk';
 
 
 export default function AccountDashboard() {

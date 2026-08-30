@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { formatDuration } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
-import type { Appointment, CollectionMeta, AppointmentStatusType } from '@opencals/storefront-sdk';
+import type { AppointmentListItemResponse as Appointment, CollectionMeta, AppointmentStatusType } from '@opencals/storefront-sdk';
 
 export default function AppointmentsPage() {
 	const [appointments, setAppointments] = useState<Appointment[]>([]);

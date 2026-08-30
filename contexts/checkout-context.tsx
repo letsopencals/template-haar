@@ -10,10 +10,18 @@ import type {
 	CheckoutStartResponse,
 	SubmitCheckout,
 	CartItem,
-	CheckoutQuestion,
+	CheckoutQuestionResponse as CheckoutQuestion,
 } from '@opencals/storefront-sdk';
 
 export type CheckoutStep = 'customer' | 'questions' | 'payment-select' | 'payment';
+
+// The backend can override the requested provider with the "no payment required" fallback when nothing
+// is collectible. This template's pinned SDK union predates that value, so accept a widened string here
+// (no `as` assertion; SDK types stay authoritative) and compare against the known fallback name.
+const NO_PAYMENT_REQUIRED_PROVIDER = 'no_payment_required';
+function isNoPaymentRequired(provider: string): boolean {
+	return provider === NO_PAYMENT_REQUIRED_PROVIDER;
+}
 
 interface CheckoutContextValue {
 	// State
@@ -104,11 +112,15 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		}
 	}, [cartId, checkoutComplete, router]);
 
-	// Fetch payment providers
+	// Fetch payment providers. Cart-aware, so refetch when the cart id is known — a fully
+	// discounted / sub-minimum cart comes back as a single `no_payment_required` provider.
 	useEffect(() => {
 		async function fetchProviders() {
 			try {
-				const res = await fetch('/api/payment/providers');
+				const res = await fetch(
+					'/api/payment/providers',
+					cartId ? { headers: { 'X-Cart-Id': cartId } } : undefined,
+				);
 				if (res.ok) {
 					const data = await res.json();
 					setProviders(Array.isArray(data) ? data : []);
@@ -118,7 +130,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 			}
 		}
 		fetchProviders();
-	}, []);
+	}, [cartId]);
 
 	const cartHeaders = useCallback(
 		(): Record<string, string> =>
@@ -235,7 +247,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 				const data: CheckoutStartResponse = await res.json();
 				setPaymentData(data);
 
-				if (providerName === 'cash') {
+				// Key off the RESPONSE provider: when nothing is collectible the backend overrides the
+				// requested provider (e.g. Stripe) with "no payment required" — confirm it immediately, like cash.
+				if (providerName === 'cash' || isNoPaymentRequired(data.provider)) {
 					await handleSubmitCheckout();
 				} else if (data.redirectUrl) {
 					window.location.href = data.redirectUrl;

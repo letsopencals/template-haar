@@ -1,6 +1,6 @@
 {
 	"name": "beauty-salon-template",
-	"version": "0.1.0",
+	"version": "0.3.13",
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
@@ -10,7 +10,7 @@
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^3.9.0",
-		"@opencals/storefront-sdk": "^0.3.1",
+		"@opencals/storefront-sdk": "^0.3.13",
 		"@stripe/react-stripe-js": "^3.1.0",
 		"@stripe/stripe-js": "^5.5.0",
 		"@vercel/analytics": "^2.0.1",

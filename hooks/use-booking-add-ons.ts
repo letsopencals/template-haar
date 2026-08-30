@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { AddOn, Product } from '@opencals/storefront-sdk';
+import type { AddOnListItemResponse as AddOn, ProductListVariant } from '@opencals/storefront-sdk';
 import { computeAddOnLineTotal } from '@/lib/format';
 
 interface UseBookingAddOnsOptions {
-	activeVariant: Product | null;
+	activeVariant: ProductListVariant | null;
 	locationId: string | null;
 	staffMemberId: string | null;
 	bookedDurationUnits: number;

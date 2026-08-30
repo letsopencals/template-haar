@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatDuration, formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
-import type { Appointment, AppointmentStatusType, CurrentAvailabilitySlot } from '@opencals/storefront-sdk';
+import type { AppointmentDetailResponse as Appointment, AppointmentStatusType, CurrentAvailabilitySlot } from '@opencals/storefront-sdk';
 
 type ModalState = 'none' | 'cancel' | 'reschedule';
 
@@ -167,7 +167,7 @@ export default function AppointmentDetailPage() {
 					{(() => {
 						const addOns = appointment.addOns ?? [];
 						if (!addOns.length) return null;
-						const currency = appointment.store?.currencyCode ?? 'USD';
+						const currency = appointment.order?.paymentCurrencyCode ?? 'USD';
 						return (
 							<div className="border border-charcoal/10 p-6">
 								<h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">
@@ -250,7 +250,7 @@ export default function AppointmentDetailPage() {
 							)}
 							{appointment.product.price != null && appointment.product.price > 0 && (
 								<p className="mt-2 text-lg font-bold text-charcoal">
-									{formatPrice(appointment.product.price, appointment.store?.currencyCode ?? 'USD')}
+									{formatPrice(appointment.product.price, appointment.order?.paymentCurrencyCode ?? 'USD')}
 								</p>
 							)}
 						</div>

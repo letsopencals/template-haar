@@ -1,4 +1,10 @@
-import type { AddOn, Product } from '@opencals/storefront-sdk';
+import type { AddOnListItemResponse as AddOn } from '@opencals/storefront-sdk';
+
+/** Minimal shape shared by the various product/variant responses that carry imagery. */
+interface WithImages {
+	image?: { url?: string | null } | null;
+	images?: Array<{ url?: string | null }> | null;
+}
 
 export function formatDuration(seconds: number): string {
 	const hours = Math.floor(seconds / 3600);
@@ -17,7 +23,7 @@ export function formatPrice(amount: number, currency = 'USD'): string {
 	}).format(amount);
 }
 
-export function getProductImage(product: Product | undefined): string | null {
+export function getProductImage(product: WithImages | undefined | null): string | null {
 	return product?.image?.url ?? product?.images?.[0]?.url ?? null;
 }
 

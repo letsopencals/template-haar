@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Product } from '@opencals/storefront-sdk';
+import type { ProductListItemResponse, ProductListVariant } from '@opencals/storefront-sdk';
 
 interface UseProductDataResult {
-	product: Product | null;
-	activeVariant: Product | null;
-	variants: Product[];
+	product: ProductListItemResponse | null;
+	activeVariant: ProductListVariant | null;
+	variants: ProductListVariant[];
 	hasVariants: boolean;
 	selectedVariantId: string | null;
 	setSelectedVariantId: (id: string | null) => void;
@@ -15,7 +15,7 @@ interface UseProductDataResult {
 }
 
 export function useProductData(slug: string): UseProductDataResult {
-	const [product, setProduct] = useState<Product | null>(null);
+	const [product, setProduct] = useState<ProductListItemResponse | null>(null);
 	const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -47,11 +47,11 @@ export function useProductData(slug: string): UseProductDataResult {
 		return () => { cancelled = true; };
 	}, [slug]);
 
-	const variants = product?.variants ?? [];
+	const variants: ProductListVariant[] = product?.variants ?? [];
 	const hasVariants = variants.length > 0;
-	const activeVariant: Product | null = hasVariants
-		? variants.find((v) => v.id === selectedVariantId) || null
-		: product;
+	const activeVariant: ProductListVariant | null = hasVariants
+		? variants.find((v) => v.id === selectedVariantId) || variants[0] || null
+		: null;
 
 	return {
 		product,

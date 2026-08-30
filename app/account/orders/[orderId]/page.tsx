@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
-import type { Order, OrderLineItem, AppointmentStatusType } from '@opencals/storefront-sdk';
+import type { OrderDetailResponse as Order, OrderDetailLineItem as OrderLineItem, AppointmentStatusType } from '@opencals/storefront-sdk';
 
 export default function OrderDetailPage() {
 	const { orderId } = useParams<{ orderId: string }>();
@@ -51,7 +51,9 @@ export default function OrderDetailPage() {
 
 	const currency = order.paymentCurrencyCode;
 	const lineItems = order.lineItems ?? [];
-	const appointments = order.appointments ?? [];
+	const appointments = lineItems
+		.map((li) => li.appointment)
+		.filter((a): a is NonNullable<typeof a> => a != null);
 
 	return (
 		<div>

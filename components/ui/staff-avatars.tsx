@@ -1,6 +1,6 @@
 'use client';
 
-import type { StaffMember } from '@opencals/storefront-sdk';
+import type { ProductListVariantStaffMember as StaffMember } from '@opencals/storefront-sdk';
 import { getStaffImageUrl, getStaffInitials } from '@/lib/staff-utils';
 
 interface StaffAvatarsProps {

@@ -1,6 +1,6 @@
 'use client';
 
-import type { CurrentAvailabilitySlot, StaffMember } from '@opencals/storefront-sdk';
+import type { CurrentAvailabilitySlot, ProductListVariantStaffMember as StaffMember } from '@opencals/storefront-sdk';
 import { StaffAvatars } from '@/components/ui/staff-avatars';
 
 interface TimeSlotsProps {

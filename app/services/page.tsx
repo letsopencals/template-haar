@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
 import Link from 'next/link';
-import type { Product } from '@opencals/storefront-sdk';
+import type { ProductListItemResponse as Product } from '@opencals/storefront-sdk';
 import { formatDuration, formatPrice, getProductImage } from '@/lib/format';
 import { useLocation } from '@/contexts/location-context';
 import { useSettings } from '@/contexts/settings-context';
@@ -83,13 +83,13 @@ function ServiceCard({product, index}: { product: Product; index: number }) {
 							<div className="flex items-center justify-between border-b border-cream-dark py-4">
 								<span className="text-sm font-medium text-charcoal">Duration</span>
 								<span className="text-sm font-semibold text-charcoal">
-									{formatDuration((variants[0] ?? product).duration)}
+									{formatDuration(variants[0]?.duration ?? product.duration)}
 								</span>
 							</div>
 							<div className="flex items-center justify-between border-b border-cream-dark py-4">
 								<span className="text-sm font-medium text-charcoal">Price</span>
 								<span className="text-sm font-semibold text-charcoal">
-									{formatPrice((variants[0] ?? product).price, currency)}
+									{formatPrice(variants[0]?.price ?? product.price, currency)}
 								</span>
 							</div>
 							{product.maxAttendees > 1 && (
@@ -104,7 +104,7 @@ function ServiceCard({product, index}: { product: Product; index: number }) {
 
 						{/* Staff avatars */}
 						{(() => {
-							const staffList = (variants[0] ?? product).staffMembers;
+							const staffList = variants[0]?.staffMembers;
 							return staffList && staffList.length > 0 ? (
 								<div className="mt-6">
 									<StaffAvatars staffMembers={staffList} maxVisible={5} size="md"/>
@@ -113,7 +113,7 @@ function ServiceCard({product, index}: { product: Product; index: number }) {
 						})()}
 
 						<Link
-							href={`/booking/${(variants[0] ?? product).slug}`}
+							href={`/booking/${variants[0]?.slug ?? product.slug}`}
 							className="group mt-8 inline-flex items-center gap-3 bg-charcoal px-7 py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
 						>
 							Book Now

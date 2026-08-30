@@ -1,4 +1,4 @@
-import type { Cart } from '@opencals/storefront-sdk';
+import type { CartResponse as Cart } from '@opencals/storefront-sdk';
 
 export type AppliedDiscount = {
 	id: string;

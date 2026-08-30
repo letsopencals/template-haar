@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
-import type { Order, CollectionMeta, OrderLineItem } from '@opencals/storefront-sdk';
+import type { OrderListItemResponse as Order, CollectionMeta, OrderListLineItem as OrderLineItem } from '@opencals/storefront-sdk';
 
 export default function OrdersPage() {
 	const [orders, setOrders] = useState<Order[]>([]);
@@ -96,7 +96,7 @@ export default function OrdersPage() {
 															{addOnLineItems.map((aoli, j) => (
 																<div key={j} className="flex justify-between text-[11px] text-warm-gray/80">
 																	<span>
-																		{aoli.addOn?.title ?? 'Add-on'}
+																Add-on
 																		{aoli.quantity > 1 && ` × ${aoli.quantity}`}
 																	</span>
 																	<span>{formatPrice(aoli.discountedUnitPrice * aoli.quantity, order.paymentCurrencyCode)}</span>

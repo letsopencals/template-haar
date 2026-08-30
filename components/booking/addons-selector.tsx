@@ -1,6 +1,6 @@
 'use client';
 
-import type { AddOn } from '@opencals/storefront-sdk';
+import type { AddOnListItemResponse as AddOn } from '@opencals/storefront-sdk';
 import { formatPrice } from '@/lib/format';
 
 interface AddOnsSelectorProps {

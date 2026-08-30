@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import type { JWT } from 'next-auth/jwt';
-import type { Customer } from '@opencals/storefront-sdk';
+import type { SelfServiceProfileResponse as Customer } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
 import { AuthService, SelfService } from '@opencals/storefront-sdk';
 
