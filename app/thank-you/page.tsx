@@ -270,7 +270,7 @@ function ThankYouContent() {
 															)}
 														</div>
 														<p className="text-sm font-medium text-charcoal">
-															{formatPrice(item.total ?? 0, currency)}
+															{formatPrice(item.discountedTotal ?? 0, currency)}
 														</p>
 													</div>
 													{addOnLineItems.length > 0 && (
@@ -282,7 +282,7 @@ function ThankYouContent() {
 																		{aoli.quantity > 1 && ` × ${aoli.quantity}`}
 																	</span>
 																	<span className="font-medium">
-																		{formatPrice(aoli.discountedUnitPrice * aoli.quantity, currency)}
+																		{formatPrice(aoli.discountedSubtotal, currency)}
 																	</span>
 																</div>
 															))}
@@ -296,9 +296,8 @@ function ThankYouContent() {
 
 								{(() => {
 									const totalDiscount = (order?.lineItems ?? []).reduce((acc: number, item) => {
-										const base = (item.originalUnitPrice - item.discountedUnitPrice) * item.quantity;
-										const addOns = (item.addOnLineItems ?? []).reduce((a: number, ao) => a + (ao.originalUnitPrice - ao.discountedUnitPrice) * ao.quantity, 0);
-										return acc + base + addOns;
+										const addOns = (item.addOnLineItems ?? []).reduce((a: number, ao) => a + ao.totalDiscount, 0);
+										return acc + item.totalDiscount + addOns;
 									}, 0);
 									return (
 										<div className="mt-4 space-y-2 border-t border-charcoal/10 pt-4">

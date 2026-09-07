@@ -207,7 +207,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
 																			</>
 																		)}
 																		<span className="ml-1 whitespace-nowrap text-xs font-semibold text-charcoal">
-																			{formatPrice(aoi.discountedUnitPrice * aoi.quantity, cart?.paymentCurrencyCode)}
+																			{formatPrice(aoi.discountedSubtotal, cart?.paymentCurrencyCode)}
 																		</span>
 																		<button
 																			onClick={() => removeAddOnItem(aoi.id)}

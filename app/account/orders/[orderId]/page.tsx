@@ -154,7 +154,7 @@ export default function OrderDetailPage() {
 													)}
 												</div>
 												<p className="text-sm font-medium text-charcoal">
-													{formatPrice(item.total, currency)}
+													{formatPrice(item.discountedTotal, currency)}
 												</p>
 											</div>
 											{addOnLineItems.length > 0 && (
@@ -165,7 +165,7 @@ export default function OrderDetailPage() {
 																{aoli.addOn?.title ?? 'Add-on'} × {aoli.quantity}
 															</span>
 															<span className="font-medium text-charcoal">
-																{formatPrice(aoli.discountedUnitPrice * aoli.quantity, currency)}
+																{formatPrice(aoli.discountedSubtotal, currency)}
 															</span>
 														</div>
 													))}
@@ -192,9 +192,8 @@ export default function OrderDetailPage() {
 							</div>
 							{(() => {
 								const totalDiscount = (order.lineItems ?? []).reduce((acc: number, item: OrderLineItem) => {
-									const base = (item.originalUnitPrice - item.discountedUnitPrice) * item.quantity;
-									const addOns = (item.addOnLineItems ?? []).reduce((a: number, ao) => a + (ao.originalUnitPrice - ao.discountedUnitPrice) * ao.quantity, 0);
-									return acc + base + addOns;
+									const addOns = (item.addOnLineItems ?? []).reduce((a: number, ao) => a + ao.totalDiscount, 0);
+									return acc + item.totalDiscount + addOns;
 								}, 0);
 								if (totalDiscount <= 0) return null;
 								return (

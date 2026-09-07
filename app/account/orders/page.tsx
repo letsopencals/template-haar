@@ -89,7 +89,7 @@ export default function OrdersPage() {
 												<div key={i}>
 													<div className="flex justify-between text-xs text-warm-gray">
 														<span>{item.appointment?.product?.title ?? 'Service'}</span>
-														<span>{formatPrice(item.total ?? 0, order.paymentCurrencyCode)}</span>
+														<span>{formatPrice(item.discountedTotal ?? 0, order.paymentCurrencyCode)}</span>
 													</div>
 													{addOnLineItems.length > 0 && (
 														<div className="mt-0.5 ml-3 space-y-0.5">
@@ -99,7 +99,7 @@ export default function OrdersPage() {
 																Add-on
 																		{aoli.quantity > 1 && ` × ${aoli.quantity}`}
 																	</span>
-																	<span>{formatPrice(aoli.discountedUnitPrice * aoli.quantity, order.paymentCurrencyCode)}</span>
+																	<span>{formatPrice(aoli.discountedSubtotal, order.paymentCurrencyCode)}</span>
 																</div>
 															))}
 														</div>

@@ -103,7 +103,7 @@ export function OrderSummary() {
 													{aoi.quantity > 1 && ` × ${aoi.quantity}`}
 												</span>
 												<span className="font-medium text-charcoal">
-													{formatPrice(aoi.discountedUnitPrice * aoi.quantity, cart.paymentCurrencyCode)}
+													{formatPrice(aoi.discountedSubtotal, cart.paymentCurrencyCode)}
 												</span>
 											</div>
 										))}
