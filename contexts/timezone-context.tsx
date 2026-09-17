@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import moment from 'moment-timezone';
 
 const TIMEZONE_COOKIE = '@opencals/timezone';
@@ -27,7 +27,9 @@ export function TimezoneProvider({ children }: { children: ReactNode }) {
 		}
 	}, [timezone]);
 
-	return <TimezoneContext.Provider value={{ timezone, setTimezone }}>{children}</TimezoneContext.Provider>;
+	const value = useMemo<TimezoneContextValue>(() => ({ timezone, setTimezone }), [timezone]);
+
+	return <TimezoneContext.Provider value={value}>{children}</TimezoneContext.Provider>;
 }
 
 export function useTimezone(): TimezoneContextValue {

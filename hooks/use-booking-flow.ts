@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CurrentAvailabilitySlot } from '@opencals/storefront-sdk';
+import type { CurrentAvailabilitySlot, ProductListItemResponse } from '@opencals/storefront-sdk';
 import type { BookingStep } from '@/lib/booking-constants';
 import { useCart } from '@/contexts/cart-context';
 import { useLocation } from '@/contexts/location-context';
@@ -10,12 +10,12 @@ import { useProductData } from '@/hooks/use-product-data';
 import { useAvailability } from '@/hooks/use-availability';
 import { useBookingAddOns } from '@/hooks/use-booking-add-ons';
 
-export function useBookingFlow(slug: string) {
+export function useBookingFlow(slug: string, initialProduct: ProductListItemResponse | null = null) {
 	const { cartId, setCart } = useCart();
 	const { selectedLocationId: globalLocationId } = useLocation();
 	const { formatCustom, formatTimeRange, timezone } = useDateFormatter();
 
-	const productData = useProductData(slug);
+	const productData = useProductData(slug, initialProduct);
 	const { product, activeVariant, variants, hasVariants, selectedVariantId, setSelectedVariantId } = productData;
 
 	// Staff & location state

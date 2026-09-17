@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { StorePublicSettings } from '@opencals/storefront-sdk';
 
 interface SettingsContextValue {
@@ -19,29 +19,28 @@ const SettingsContext = createContext<SettingsContextValue>({
 	loading: true,
 });
 
-export function SettingsProvider({ children }: { children: ReactNode }) {
-	const [settings, setSettings] = useState<StorePublicSettings | null>(null);
-	const [loading, setLoading] = useState(true);
-
-	useEffect(() => {
-		fetch('/api/store/settings')
-			.then((res) => (res.ok ? res.json() : null))
-			.then((data: StorePublicSettings | null) => {
-				if (data) setSettings(data);
-			})
-			.catch(() => {})
-			.finally(() => setLoading(false));
-	}, []);
-
-	const currency = settings?.currency ?? 'USD';
-	const timeFormat = settings?.settings?.timeFormat ?? '12H';
-	const dateFormat = settings?.settings?.dateFormat ?? 'MM/DD/YYYY';
-
-	return (
-		<SettingsContext.Provider value={{ settings, currency, timeFormat, dateFormat, loading }}>
-			{children}
-		</SettingsContext.Provider>
+export function SettingsProvider({
+	children,
+	initialSettings = null,
+}: {
+	children: ReactNode;
+	initialSettings?: StorePublicSettings | null;
+}) {
+	// Settings are fetched on the server and passed in, so there's no loading
+	// flash and no client fetch on mount. Value is memoized to keep the context
+	// stable across parent re-renders.
+	const value = useMemo<SettingsContextValue>(
+		() => ({
+			settings: initialSettings,
+			currency: initialSettings?.currency ?? 'USD',
+			timeFormat: initialSettings?.settings?.timeFormat ?? '12H',
+			dateFormat: initialSettings?.settings?.dateFormat ?? 'MM/DD/YYYY',
+			loading: false,
+		}),
+		[initialSettings],
 	);
+
+	return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
 
 export function useSettings() {

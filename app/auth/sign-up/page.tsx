@@ -7,6 +7,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signUpSchema, type SignUpFormValues } from '@/lib/schemas';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useFormSubmit } from '@/hooks/use-form-submit';
 import { siteConfig } from '@/lib/site-config';
 
@@ -65,12 +67,7 @@ export default function SignUpPage() {
 									<FormItem>
 										<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">First Name</FormLabel>
 										<FormControl>
-											<input
-												{...field}
-												type="text"
-												placeholder="Jane"
-												className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-											/>
+											<Input {...field} type="text" placeholder="Jane" />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -83,12 +80,7 @@ export default function SignUpPage() {
 									<FormItem>
 										<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">Last Name</FormLabel>
 										<FormControl>
-											<input
-												{...field}
-												type="text"
-												placeholder="Smith"
-												className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-											/>
+											<Input {...field} type="text" placeholder="Smith" />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -104,12 +96,7 @@ export default function SignUpPage() {
 										Email <span className="text-accent">*</span>
 									</FormLabel>
 									<FormControl>
-										<input
-											{...field}
-											type="email"
-											placeholder="your@email.com"
-											className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-										/>
+										<Input {...field} type="email" placeholder="your@email.com" />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -124,25 +111,16 @@ export default function SignUpPage() {
 										Password <span className="text-accent">*</span>
 									</FormLabel>
 									<FormControl>
-										<input
-											{...field}
-											type="password"
-											placeholder="Min. 8 characters"
-											className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-										/>
+										<Input {...field} type="password" placeholder="Min. 8 characters" />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
 							)}
 						/>
 
-						<button
-							type="submit"
-							disabled={isSubmitting}
-							className="w-full bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent disabled:opacity-50"
-						>
+						<Button type="submit" variant="primary" size="lg" fullWidth disabled={isSubmitting}>
 							{isSubmitting ? 'Creating account...' : 'Create Account'}
-						</button>
+						</Button>
 					</form>
 				</Form>
 

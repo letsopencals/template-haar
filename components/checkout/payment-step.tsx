@@ -1,8 +1,21 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { useCheckout } from '@/contexts/checkout-context';
-import { StripePayment } from '@/components/checkout/stripe-payment';
+import { Button } from '@/components/ui/button';
+
+// StripePayment pulls in Stripe (@stripe/react-stripe-js + stripe-js), which is
+// heavy and only needed on the final step — load it on demand.
+const StripePayment = dynamic(
+	() => import('@/components/checkout/stripe-payment').then((m) => m.StripePayment),
+	{ ssr: false },
+);
+
+const STEP_INITIAL = { opacity: 0, x: 20 };
+const STEP_ANIMATE = { opacity: 1, x: 0 };
+const STEP_EXIT = { opacity: 0, x: -20 };
+const STEP_TRANSITION = { duration: 0.3 };
 
 export function PaymentStep() {
 	const { selectedProvider, paymentData, submitting, isExpired, setStep, setError, handleSubmitCheckout } =
@@ -13,10 +26,10 @@ export function PaymentStep() {
 	return (
 		<motion.div
 			key="payment"
-			initial={{ opacity: 0, x: 20 }}
-			animate={{ opacity: 1, x: 0 }}
-			exit={{ opacity: 0, x: -20 }}
-			transition={{ duration: 0.3 }}
+			initial={STEP_INITIAL}
+			animate={STEP_ANIMATE}
+			exit={STEP_EXIT}
+			transition={STEP_TRANSITION}
 			className="space-y-6"
 		>
 			{selectedProvider === 'stripe' && paymentData.clientSecret ? (
@@ -31,23 +44,15 @@ export function PaymentStep() {
 				<div className="border border-charcoal/10 p-6 text-center">
 					<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">Pay at Venue</h3>
 					<p className="mt-4 text-sm text-warm-gray">Your booking is confirmed. Please pay when you arrive.</p>
-					<button
-						onClick={() => handleSubmitCheckout()}
-						disabled={submitting || isExpired}
-						className="mt-6 w-full bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent disabled:opacity-50"
-					>
+					<Button variant="primary" size="lg" fullWidth className="mt-6" onClick={() => handleSubmitCheckout()} disabled={submitting || isExpired}>
 						{submitting ? 'Confirming...' : 'Confirm Booking'}
-					</button>
+					</Button>
 				</div>
 			) : null}
 
-			<button
-				type="button"
-				onClick={() => setStep('payment-select')}
-				className="w-full border border-charcoal/10 px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-charcoal transition-colors hover:bg-cream"
-			>
+			<Button type="button" variant="outline" size="lg" fullWidth onClick={() => setStep('payment-select')}>
 				Back
-			</button>
+			</Button>
 		</motion.div>
 	);
 }

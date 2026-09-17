@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { CartResponse as Cart } from '@opencals/storefront-sdk';
 import type { CartWithDiscounts } from '@/types/discount';
+import { useCartExpiry } from '@/hooks/use-cart-expiry';
 
 const CART_ID_KEY = '@opencals/cart';
 
@@ -57,8 +58,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 	const [cart, setCartState] = useState<CartWithDiscounts | null>(null);
 	const [cartId, setCartId] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const timeRemaining = useCartExpiry(cart?.expiresAt);
 	const [discountCodeError, setDiscountCodeError] = useState<DiscountCodeError | null>(null);
 
 	// Load cart ID from localStorage on mount
@@ -92,33 +92,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
 		fetchCart();
 	}, [cartId]);
-
-	// Expiration timer
-	useEffect(() => {
-		if (timerRef.current) clearInterval(timerRef.current);
-
-		if (!cart?.expiresAt) {
-			setTimeRemaining(null);
-			return;
-		}
-
-		function tick() {
-			const expiresAt = new Date(cart!.expiresAt!).getTime();
-			const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
-			setTimeRemaining(remaining);
-
-			if (remaining <= 0 && timerRef.current) {
-				clearInterval(timerRef.current);
-			}
-		}
-
-		tick();
-		timerRef.current = setInterval(tick, 1000);
-
-		return () => {
-			if (timerRef.current) clearInterval(timerRef.current);
-		};
-	}, [cart?.expiresAt]);
 
 	const refreshCart = useCallback(async () => {
 		if (!cartId) return;
@@ -198,7 +171,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 		localStorage.removeItem(CART_ID_KEY);
 		setCartId(null);
 		setCartState(null);
-		setTimeRemaining(null);
 	}, []);
 
 	const applyDiscountCode = useCallback(
@@ -241,27 +213,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 		setDiscountCodeError(null);
 	}, []);
 
-	return (
-		<CartContext.Provider
-			value={{
-				cart,
-				cartId,
-				loading,
-				timeRemaining,
-				refreshCart,
-				setCart,
-				removeItem,
-				updateAddOnQuantity,
-				removeAddOnItem,
-				extendCart,
-				clearCart,
-				applyDiscountCode,
-				removeDiscountCode,
-				discountCodeError,
-				clearDiscountCodeError,
-			}}
-		>
-			{children}
-		</CartContext.Provider>
+	const value = useMemo<CartContextValue>(
+		() => ({
+			cart,
+			cartId,
+			loading,
+			timeRemaining,
+			refreshCart,
+			setCart,
+			removeItem,
+			updateAddOnQuantity,
+			removeAddOnItem,
+			extendCart,
+			clearCart,
+			applyDiscountCode,
+			removeDiscountCode,
+			discountCodeError,
+			clearDiscountCodeError,
+		}),
+		[
+			cart,
+			cartId,
+			loading,
+			timeRemaining,
+			refreshCart,
+			setCart,
+			removeItem,
+			updateAddOnQuantity,
+			removeAddOnItem,
+			extendCart,
+			clearCart,
+			applyDiscountCode,
+			removeDiscountCode,
+			discountCodeError,
+			clearDiscountCodeError,
+		],
 	);
+
+	return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

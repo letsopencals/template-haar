@@ -3,6 +3,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Providers } from '@/components/providers';
 import { siteConfig } from '@/lib/site-config';
+import { getStoreSettings } from '@/lib/server-data';
 import './globals.css';
 
 const title = `${siteConfig.name} — ${siteConfig.tagline}`;
@@ -32,11 +33,13 @@ export const metadata: Metadata = {
 	},
 };
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	const initialSettings = await getStoreSettings();
+
 	return (
 		<html lang="en">
 			<body>
@@ -46,7 +49,7 @@ export default function RootLayout({
 						__html: `window.addEventListener("message",function(e){if(e.data&&e.data.type==="scrollTo"&&e.data.id){var el=document.getElementById(e.data.id);if(el){var top=el.getBoundingClientRect().top+window.scrollY;window.scrollTo({top:top,behavior:"smooth"})}}if(e.data&&e.data.type==="scrollTop"){window.scrollTo({top:0,behavior:"smooth"})}});`,
 					}}
 				/>
-				<Providers>
+				<Providers initialSettings={initialSettings}>
 					<Header />
 					<main>{children}</main>
 					<Footer />

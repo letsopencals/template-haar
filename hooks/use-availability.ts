@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import useSWR from 'swr';
 import type { CurrentAvailabilitySlot, ProductListVariant } from '@opencals/storefront-sdk';
+import { fetcher } from '@/lib/fetcher';
 
 interface UseAvailabilityOptions {
 	activeVariant: ProductListVariant | null;
@@ -24,39 +26,26 @@ export function useAvailability(options: UseAvailabilityOptions): UseAvailabilit
 	const { activeVariant, timezone, staffMemberId, locationId } = options;
 
 	const [selectedDate, setSelectedDate] = useState<string | null>(null);
-	const [slots, setSlots] = useState<CurrentAvailabilitySlot[]>([]);
-	const [slotsLoading, setSlotsLoading] = useState(false);
 	const [selectedSlot, setSelectedSlot] = useState<CurrentAvailabilitySlot | null>(null);
 
-	useEffect(() => {
-		if (!activeVariant || !selectedDate) return;
+	// SWR handles request dedup + cancellation of stale responses; the key is
+	// null until a date is picked, so nothing fetches on mount.
+	const key =
+		activeVariant && selectedDate
+			? (() => {
+					const params = new URLSearchParams({ date: selectedDate, timezone });
+					if (staffMemberId) params.set('staffMemberId', staffMemberId);
+					if (locationId) params.set('locationId', locationId);
+					return `/api/products/${activeVariant.slug}/availability?${params}`;
+				})()
+			: null;
 
-		const controller = new AbortController();
-		setSlotsLoading(true);
-		setSelectedSlot(null);
+	const { data, isLoading } = useSWR<CurrentAvailabilitySlot[]>(key, fetcher, {
+		revalidateOnFocus: false,
+		onSuccess: () => setSelectedSlot(null),
+	});
 
-		const params = new URLSearchParams({ date: selectedDate, timezone });
-		if (staffMemberId) params.set('staffMemberId', staffMemberId);
-		if (locationId) params.set('locationId', locationId);
-
-		fetch(`/api/products/${activeVariant.slug}/availability?${params}`, { signal: controller.signal })
-			.then((res) => {
-				if (!res.ok) throw new Error('Failed');
-				return res.json();
-			})
-			.then((data) => {
-				setSlots(Array.isArray(data) ? data : []);
-			})
-			.catch((err) => {
-				if (err instanceof DOMException && err.name === 'AbortError') return;
-				setSlots([]);
-			})
-			.finally(() => {
-				setSlotsLoading(false);
-			});
-
-		return () => controller.abort();
-	}, [activeVariant, selectedDate, timezone, staffMemberId, locationId]);
+	const slots = Array.isArray(data) ? data : [];
 
 	const selectSlot = useCallback((slot: CurrentAvailabilitySlot) => {
 		setSelectedSlot(slot);
@@ -75,7 +64,7 @@ export function useAvailability(options: UseAvailabilityOptions): UseAvailabilit
 		selectedDate,
 		setSelectedDate: handleSetDate,
 		slots,
-		slotsLoading,
+		slotsLoading: !!key && isLoading,
 		selectedSlot,
 		selectSlot,
 		resetSlot,

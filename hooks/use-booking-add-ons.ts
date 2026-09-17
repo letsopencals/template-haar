@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import type { AddOnListItemResponse as AddOn, ProductListVariant } from '@opencals/storefront-sdk';
 import { computeAddOnLineTotal } from '@/lib/format';
+import { fetcher } from '@/lib/fetcher';
 
 interface UseBookingAddOnsOptions {
 	activeVariant: ProductListVariant | null;
@@ -23,51 +25,39 @@ interface UseBookingAddOnsResult {
 export function useBookingAddOns(options: UseBookingAddOnsOptions): UseBookingAddOnsResult {
 	const { activeVariant, locationId, staffMemberId, bookedDurationUnits } = options;
 
-	const [availableAddOns, setAvailableAddOns] = useState<AddOn[]>([]);
-	const [addOnsLoading, setAddOnsLoading] = useState(false);
 	const [selectedAddOns, setSelectedAddOns] = useState<Map<string, number>>(new Map());
-	const requestId = useRef(0);
 
-	useEffect(() => {
-		if (!activeVariant?.slug) {
-			setAvailableAddOns([]);
-			return;
-		}
+	// SWR keyed on variant + location + staff; dedupes and cancels stale responses.
+	const key = activeVariant?.slug
+		? (() => {
+				const params = new URLSearchParams();
+				if (locationId) params.set('locationId', locationId);
+				if (staffMemberId) params.set('staffMemberId', staffMemberId);
+				const qs = params.toString() ? `?${params}` : '';
+				return `/api/products/${activeVariant.slug}/add-ons${qs}`;
+			})()
+		: null;
 
-		const currentId = ++requestId.current;
-		setAddOnsLoading(true);
-
-		const params = new URLSearchParams();
-		if (locationId) params.set('locationId', locationId);
-		if (staffMemberId) params.set('staffMemberId', staffMemberId);
-		const qs = params.toString() ? `?${params}` : '';
-
-		fetch(`/api/products/${activeVariant.slug}/add-ons${qs}`)
-			.then((res) => (res.ok ? res.json() : []))
-			.then((data: AddOn[]) => {
-				if (currentId !== requestId.current) return;
-				const addOns = Array.isArray(data) ? data : [];
-				setAvailableAddOns(addOns);
-				setSelectedAddOns((prev) => {
-					const validIds = new Set(addOns.map((a) => a.id));
-					const next = new Map(prev);
-					let mutated = false;
-					for (const key of next.keys()) {
-						if (!validIds.has(key)) {
-							next.delete(key);
-							mutated = true;
-						}
+	const { data, isLoading } = useSWR<AddOn[]>(key, fetcher, {
+		revalidateOnFocus: false,
+		onSuccess: (fetched) => {
+			// Drop any selected add-ons that are no longer offered.
+			const validIds = new Set((fetched ?? []).map((a) => a.id));
+			setSelectedAddOns((prev) => {
+				const next = new Map(prev);
+				let mutated = false;
+				for (const id of next.keys()) {
+					if (!validIds.has(id)) {
+						next.delete(id);
+						mutated = true;
 					}
-					return mutated ? next : prev;
-				});
-			})
-			.catch(() => {
-				if (currentId === requestId.current) setAvailableAddOns([]);
-			})
-			.finally(() => {
-				if (currentId === requestId.current) setAddOnsLoading(false);
+				}
+				return mutated ? next : prev;
 			});
-	}, [activeVariant?.slug, locationId, staffMemberId]);
+		},
+	});
+
+	const availableAddOns = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
 	const addOnsTotal = useMemo(() => {
 		let total = 0;
@@ -94,7 +84,7 @@ export function useBookingAddOns(options: UseBookingAddOnsOptions): UseBookingAd
 
 	return {
 		availableAddOns,
-		addOnsLoading,
+		addOnsLoading: !!key && isLoading,
 		selectedAddOns,
 		addOnsTotal,
 		updateQuantity,

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { formatDuration, formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 import type { AppointmentDetailResponse as Appointment, AppointmentStatusType, CurrentAvailabilitySlot } from '@opencals/storefront-sdk';
@@ -200,15 +201,12 @@ export default function AppointmentDetailPage() {
 							</h2>
 							<div className="mt-4 flex flex-wrap gap-3">
 								{canReschedule && (
-									<button
-										onClick={() => setModal('reschedule')}
-										className="flex items-center gap-2 border border-charcoal/10 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-charcoal transition-colors hover:bg-cream"
-									>
+									<Button variant="outline" size="sm" onClick={() => setModal('reschedule')}>
 										<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
 											<path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
 										</svg>
 										Reschedule
-									</button>
+									</Button>
 								)}
 								{canCancel && (
 									<button
@@ -368,13 +366,9 @@ function CancelModal({
 				)}
 
 				<div className="mt-6 flex gap-3">
-					<button
-						onClick={onClose}
-						disabled={submitting}
-						className="flex-1 border border-charcoal/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-charcoal transition-colors hover:bg-cream disabled:opacity-50"
-					>
+					<Button variant="outline" size="sm" className="flex-1" onClick={onClose} disabled={submitting}>
 						Keep Appointment
-					</button>
+					</Button>
 					<button
 						onClick={handleCancel}
 						disabled={submitting}
@@ -576,20 +570,12 @@ function RescheduleModal({
 				)}
 
 				<div className="mt-6 flex gap-3">
-					<button
-						onClick={onClose}
-						disabled={submitting}
-						className="flex-1 border border-charcoal/10 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-charcoal transition-colors hover:bg-cream disabled:opacity-50"
-					>
+					<Button variant="outline" size="sm" className="flex-1" onClick={onClose} disabled={submitting}>
 						Cancel
-					</button>
-					<button
-						onClick={handleReschedule}
-						disabled={!selectedSlot || submitting}
-						className="flex-1 bg-charcoal px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-white transition-colors hover:bg-accent disabled:opacity-50"
-					>
+					</Button>
+					<Button variant="primary" size="sm" className="flex-1" onClick={handleReschedule} disabled={!selectedSlot || submitting}>
 						{submitting ? 'Rescheduling...' : 'Confirm Reschedule'}
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>

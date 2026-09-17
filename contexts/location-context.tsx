@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Location } from '@opencals/storefront-sdk';
 
 const LOCATION_KEY = '@opencals/location';
@@ -55,11 +55,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
 	const selectedLocation = locations.find((l) => l.id === selectedLocationId) ?? null;
 
-	return (
-		<LocationContext.Provider value={{ locations, selectedLocationId, selectedLocation, setSelectedLocationId, loading }}>
-			{children}
-		</LocationContext.Provider>
+	const value = useMemo<LocationContextValue>(
+		() => ({ locations, selectedLocationId, selectedLocation, setSelectedLocationId, loading }),
+		[locations, selectedLocationId, selectedLocation, setSelectedLocationId, loading],
 	);
+
+	return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }
 
 export function useLocation(): LocationContextValue {

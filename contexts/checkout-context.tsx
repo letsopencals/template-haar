@@ -1,10 +1,12 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn as nextAuthSignIn } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 import { useCart } from '@/contexts/cart-context';
+import { usePaymentProviders } from '@/hooks/use-payment-providers';
+import { useCheckoutQuestions } from '@/hooks/use-checkout-questions';
 import type {
 	CustomerProviderCatalogItem,
 	CheckoutStartResponse,
@@ -96,12 +98,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		}
 	}, [session, prefilled]);
 
-	// Questions
-	const [questions, setQuestions] = useState<CheckoutQuestion[]>([]);
+	// Questions (cart-scoped) and payment providers (cart-aware) both load in
+	// parallel via SWR — independent of the customer-save step, so there's no
+	// sequential fetch waterfall. `answers` stays local to this step machine.
+	const questions = useCheckoutQuestions(cartId);
+	const providers = usePaymentProviders(cartId);
 	const [answers, setAnswers] = useState<Record<string, string>>({});
 
 	// Payment
-	const [providers, setProviders] = useState<CustomerProviderCatalogItem[]>([]);
 	const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 	const [paymentData, setPaymentData] = useState<CheckoutStartResponse | null>(null);
 
@@ -111,26 +115,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 			router.replace('/services');
 		}
 	}, [cartId, checkoutComplete, router]);
-
-	// Fetch payment providers. Cart-aware, so refetch when the cart id is known — a fully
-	// discounted / sub-minimum cart comes back as a single `no_payment_required` provider.
-	useEffect(() => {
-		async function fetchProviders() {
-			try {
-				const res = await fetch(
-					'/api/payment/providers',
-					cartId ? { headers: { 'X-Cart-Id': cartId } } : undefined,
-				);
-				if (res.ok) {
-					const data = await res.json();
-					setProviders(Array.isArray(data) ? data : []);
-				}
-			} catch {
-				// providers will be empty
-			}
-		}
-		fetchProviders();
-	}, [cartId]);
 
 	const cartHeaders = useCallback(
 		(): Record<string, string> =>
@@ -168,23 +152,16 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 					setCustomerId(saveResult.customerId);
 				}
 
-				// Fetch checkout questions
-				const qRes = await fetch('/api/checkout/questions?language=en', { headers: cartHeaders() });
-				if (qRes.ok) {
-					const qData = await qRes.json();
-					const questionList = Array.isArray(qData) ? qData : [];
-					setQuestions(questionList);
-					setStep(questionList.length > 0 ? 'questions' : 'payment-select');
-				} else {
-					setStep('payment-select');
-				}
+				// Questions are already loaded in parallel via SWR — just branch on them
+				// (no sequential fetch here).
+				setStep(questions.length > 0 ? 'questions' : 'payment-select');
 			} catch (err: unknown) {
 				setError(err instanceof Error ? err.message : 'An error occurred');
 			} finally {
 				setSubmitting(false);
 			}
 		},
-		[email, firstName, lastName, customerId, cartHeaders],
+		[email, firstName, lastName, customerId, cartHeaders, questions.length],
 	);
 
 	// Step 2: Save question answers
@@ -321,43 +298,68 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 	const minutes = timeRemaining !== null ? Math.floor(timeRemaining / 60) : null;
 	const seconds = timeRemaining !== null ? timeRemaining % 60 : null;
 
-	return (
-		<CheckoutContext.Provider
-			value={{
-				step,
-				error,
-				submitting,
-				checkoutComplete,
-				email,
-				firstName,
-				lastName,
-				customerId,
-				setEmail,
-				setFirstName,
-				setLastName,
-				questions,
-				answers,
-				setAnswers,
-				providers,
-				selectedProvider,
-				paymentData,
-				items,
-				isExpired,
-				timeRemaining,
-				minutes,
-				seconds,
-				setStep,
-				setError,
-				handleSaveCustomer,
-				handleSaveAnswers,
-				handleStartCheckout,
-				handleSubmitCheckout,
-				extendCart,
-			}}
-		>
-			{children}
-		</CheckoutContext.Provider>
+	// Memoized so consumers don't re-render on every provider render from an
+	// inline object identity change.
+	const value = useMemo<CheckoutContextValue>(
+		() => ({
+			step,
+			error,
+			submitting,
+			checkoutComplete,
+			email,
+			firstName,
+			lastName,
+			customerId,
+			setEmail,
+			setFirstName,
+			setLastName,
+			questions,
+			answers,
+			setAnswers,
+			providers,
+			selectedProvider,
+			paymentData,
+			items,
+			isExpired,
+			timeRemaining,
+			minutes,
+			seconds,
+			setStep,
+			setError,
+			handleSaveCustomer,
+			handleSaveAnswers,
+			handleStartCheckout,
+			handleSubmitCheckout,
+			extendCart,
+		}),
+		[
+			step,
+			error,
+			submitting,
+			checkoutComplete,
+			email,
+			firstName,
+			lastName,
+			customerId,
+			questions,
+			answers,
+			providers,
+			selectedProvider,
+			paymentData,
+			items,
+			isExpired,
+			timeRemaining,
+			minutes,
+			seconds,
+			handleSaveCustomer,
+			handleSaveAnswers,
+			handleStartCheckout,
+			handleSubmitCheckout,
+			extendCart,
+		],
 	);
+
+	return <CheckoutContext.Provider value={value}>{children}</CheckoutContext.Provider>;
 }
 
 export function useCheckout(): CheckoutContextValue {

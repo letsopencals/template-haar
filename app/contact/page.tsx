@@ -2,6 +2,7 @@
 
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
+import { Button } from '@/components/ui/button';
 import { siteConfig } from '@/lib/site-config';
 
 const contactFields = [
@@ -181,12 +182,9 @@ export default function ContactPage() {
 										placeholder="Tell us about your inquiry..."
 									/>
 								</div>
-								<button
-									type="submit"
-									className="w-full bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
-								>
+								<Button type="submit" variant="primary" size="lg" fullWidth>
 									Send Message
-								</button>
+								</Button>
 							</form>
 						</motion.div>
 					</div>

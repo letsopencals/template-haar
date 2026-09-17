@@ -8,6 +8,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { resetPasswordSchema, type ResetPasswordFormValues } from '@/lib/schemas';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useFormSubmit } from '@/hooks/use-form-submit';
 import { siteConfig } from '@/lib/site-config';
 
@@ -99,12 +101,7 @@ function ResetPasswordContent() {
 										<FormItem>
 											<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">New Password</FormLabel>
 											<FormControl>
-												<input
-													{...field}
-													type="password"
-													placeholder="Min. 6 characters"
-													className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-												/>
+												<Input {...field} type="password" placeholder="Min. 6 characters" />
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -117,25 +114,16 @@ function ResetPasswordContent() {
 										<FormItem>
 											<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">Confirm Password</FormLabel>
 											<FormControl>
-												<input
-													{...field}
-													type="password"
-													placeholder="Confirm your password"
-													className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-												/>
+												<Input {...field} type="password" placeholder="Confirm your password" />
 											</FormControl>
 											<FormMessage />
 										</FormItem>
 									)}
 								/>
 
-								<button
-									type="submit"
-									disabled={isSubmitting}
-									className="w-full bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent disabled:opacity-50"
-								>
+								<Button type="submit" variant="primary" size="lg" fullWidth disabled={isSubmitting}>
 									{isSubmitting ? 'Resetting...' : 'Reset Password'}
-								</button>
+								</Button>
 							</form>
 						</Form>
 					</>

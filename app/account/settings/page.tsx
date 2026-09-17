@@ -10,6 +10,8 @@ import {
 	type ChangePasswordFormValues,
 } from '@/lib/schemas';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useFormSubmit } from '@/hooks/use-form-submit';
 
 export default function SettingsPage() {
@@ -107,11 +109,7 @@ export default function SettingsPage() {
 												<FormItem>
 													<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">First Name</FormLabel>
 													<FormControl>
-														<input
-															{...field}
-															type="text"
-															className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-														/>
+														<Input {...field} type="text" />
 													</FormControl>
 													<FormMessage />
 												</FormItem>
@@ -124,11 +122,7 @@ export default function SettingsPage() {
 												<FormItem>
 													<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">Last Name</FormLabel>
 													<FormControl>
-														<input
-															{...field}
-															type="text"
-															className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-														/>
+														<Input {...field} type="text" />
 													</FormControl>
 													<FormMessage />
 												</FormItem>
@@ -148,13 +142,9 @@ export default function SettingsPage() {
 									</div>
 								)}
 
-								<button
-									type="submit"
-									disabled={profileSubmit.isSubmitting}
-									className="mt-6 bg-charcoal px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent disabled:opacity-50"
-								>
+								<Button type="submit" variant="primary" size="md" className="mt-6" disabled={profileSubmit.isSubmitting}>
 									{profileSubmit.isSubmitting ? 'Saving...' : 'Save Changes'}
-								</button>
+								</Button>
 							</form>
 						</Form>
 					)}
@@ -176,12 +166,7 @@ export default function SettingsPage() {
 												Current Password <span className="text-warm-gray/50">(leave empty if not set)</span>
 											</FormLabel>
 											<FormControl>
-												<input
-													{...field}
-													type="password"
-													placeholder="Current password"
-													className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-												/>
+												<Input {...field} type="password" placeholder="Current password" />
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -194,12 +179,7 @@ export default function SettingsPage() {
 										<FormItem>
 											<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">New Password</FormLabel>
 											<FormControl>
-												<input
-													{...field}
-													type="password"
-													placeholder="Min. 6 characters"
-													className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-												/>
+												<Input {...field} type="password" placeholder="Min. 6 characters" />
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -212,12 +192,7 @@ export default function SettingsPage() {
 										<FormItem>
 											<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">Confirm New Password</FormLabel>
 											<FormControl>
-												<input
-													{...field}
-													type="password"
-													placeholder="Confirm new password"
-													className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-												/>
+												<Input {...field} type="password" placeholder="Confirm new password" />
 											</FormControl>
 											<FormMessage />
 										</FormItem>
@@ -236,13 +211,9 @@ export default function SettingsPage() {
 								</div>
 							)}
 
-							<button
-								type="submit"
-								disabled={passwordSubmit.isSubmitting}
-								className="mt-6 bg-charcoal px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent disabled:opacity-50"
-							>
+							<Button type="submit" variant="primary" size="md" className="mt-6" disabled={passwordSubmit.isSubmitting}>
 								{passwordSubmit.isSubmitting ? 'Changing...' : 'Change Password'}
-							</button>
+							</Button>
 						</form>
 					</Form>
 				</div>

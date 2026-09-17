@@ -9,6 +9,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signInSchema, type SignInFormValues } from '@/lib/schemas';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { siteConfig } from '@/lib/site-config';
 
 export default function SignInPage() {
@@ -83,12 +85,7 @@ function SignInContent() {
 								<FormItem>
 									<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">Email</FormLabel>
 									<FormControl>
-										<input
-											{...field}
-											type="email"
-											placeholder="your@email.com"
-											className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-										/>
+										<Input {...field} type="email" placeholder="your@email.com" />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -101,12 +98,7 @@ function SignInContent() {
 								<FormItem>
 									<FormLabel className="mb-0 text-xs font-medium normal-case tracking-normal text-warm-gray">Password</FormLabel>
 									<FormControl>
-										<input
-											{...field}
-											type="password"
-											placeholder="Enter your password"
-											className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
-										/>
+										<Input {...field} type="password" placeholder="Enter your password" />
 									</FormControl>
 									<FormMessage />
 								</FormItem>
@@ -119,13 +111,9 @@ function SignInContent() {
 							</Link>
 						</div>
 
-						<button
-							type="submit"
-							disabled={form.formState.isSubmitting}
-							className="w-full bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent disabled:opacity-50"
-						>
+						<Button type="submit" variant="primary" size="lg" fullWidth disabled={form.formState.isSubmitting}>
 							{form.formState.isSubmitting ? 'Signing in...' : 'Sign In'}
-						</button>
+						</Button>
 					</form>
 				</Form>
 

@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { useCheckout } from '@/contexts/checkout-context';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export function CustomerStep() {
 	const { email, firstName, lastName, setEmail, setFirstName, setLastName, submitting, isExpired, handleSaveCustomer } =
@@ -24,52 +26,45 @@ export function CustomerStep() {
 						<label className="mb-1 block text-xs font-medium text-warm-gray">
 							Email <span className="text-accent">*</span>
 						</label>
-						<input
+						<Input
 							type="email"
 							required
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							placeholder="your@email.com"
-							className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
 						/>
 					</div>
 					<div className="grid gap-4 sm:grid-cols-2">
 						<div>
 							<label className="mb-1 block text-xs font-medium text-warm-gray">First Name</label>
-							<input
+							<Input
 								type="text"
 								value={firstName}
 								onChange={(e) => setFirstName(e.target.value)}
 								placeholder="Jane"
-								className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
 							/>
 						</div>
 						<div>
 							<label className="mb-1 block text-xs font-medium text-warm-gray">Last Name</label>
-							<input
+							<Input
 								type="text"
 								value={lastName}
 								onChange={(e) => setLastName(e.target.value)}
 								placeholder="Smith"
-								className="w-full border border-charcoal/10 bg-white px-4 py-3 text-sm text-charcoal outline-none transition-colors focus:border-charcoal"
 							/>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<button
-				type="submit"
-				disabled={submitting || !email || isExpired}
-				className="flex w-full items-center justify-center gap-3 bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent disabled:opacity-50"
-			>
+			<Button type="submit" variant="primary" size="lg" fullWidth disabled={submitting || !email || isExpired}>
 				{submitting ? 'Saving...' : 'Continue'}
 				{!submitting && (
 					<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
 						<path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
 					</svg>
 				)}
-			</button>
+			</Button>
 		</motion.form>
 	);
 }

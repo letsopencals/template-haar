@@ -1,157 +1,107 @@
-# Haar Salon Template — Development Guidelines
+# Template conventions
 
-## Overview
+This is a Next.js 15 (App Router) / React 19 storefront template built on
+`@opencals/storefront-sdk`. These conventions keep the template fast and
+maintainable. They apply to every template in `templates/` — this file is meant
+to be copied across them (only the template name / branding differs).
 
-This is a Next.js 15 (App Router) storefront template powered by the `@opencals/storefront-sdk`. It demonstrates a complete booking-enabled storefront with services catalog, real-time availability, cart, checkout, Stripe payments, and customer account management.
+## Data fetching
 
-## Prerequisites
+**RSC-first.** Read data on the server and pass it down. Do NOT fetch cacheable
+data in a `useEffect` on the client.
 
-- Node.js 20+
-- `@opencals/storefront-sdk` (npm: `^0.3.0`)
-- An Opencals store with a **Storefront API key** (`sfk_...`)
-- `AUTH_SECRET` for NextAuth session encryption
+- Server reads go through `lib/server-data.ts` — `React.cache()`-wrapped helpers
+  (`getStoreSettings`, `getProducts`, `getProduct`) that call the SDK directly.
+  `React.cache` dedupes calls within a request. Never import `lib/server-data.ts`
+  from a `'use client'` file.
+- `app/layout.tsx` is an async Server Component: it fetches store settings once
+  and seeds `<Providers initialSettings={...}>`. `SettingsProvider` takes the
+  value as a prop — it does not fetch.
+- Read-only pages (e.g. `app/services/page.tsx`) are async Server Components that
+  fetch with `lib/server-data.ts` and hand the result to a small `'use client'`
+  child as `initialProducts` / `initialProduct`.
 
-## Environment Variables
+**Client reads use SWR, seeded with server data.** For data that genuinely needs
+to live on the client (filtering, availability, add-ons, cart), use `useSWR`
+against the template's own `/api/*` routes, with `fallbackData` set to the
+server-rendered value so there's no loading flash on first paint.
 
-Copy `.env.local.example` to `.env.local`:
+- Shared fetcher: `lib/fetcher.ts`.
+- Build the SWR key from its inputs and pass `null` when not ready (e.g. no date
+  picked yet) so nothing fetches prematurely. Multiple SWR hooks run in parallel
+  — never chain fetches through sequential `useEffect`s.
+- `revalidateOnFocus: false` unless you specifically want refocus revalidation.
 
-```
-OPENCALS_API_KEY=sfk_your_key_here      # Required
-AUTH_SECRET=random_secret_here           # Required for auth
-OPENCALS_API_URL=https://api.opencals.com  # Optional override
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_... # Optional for payments
-```
+The `/api/*` routes stay: they are the client/SWR data source and call the SDK
+server-side via the `@/lib/opencals` side-effect import.
 
-## SDK Setup
+## Components & files
 
-### Initialization (`lib/opencals.ts`)
+**Pages compose; components implement.** A `page.tsx` should be: data fetching
+(RSC) + layout/composition + wiring. Presentational blocks and interactive
+widgets live in `components/`.
 
-The SDK is initialized once via a side-effect import. Every API route file must import it:
+- Guideline: any `page.tsx` over ~150 lines, or one that defines a section /
+  widget component, gets decomposed into `components/`.
+- Group `components/` by route/domain: `components/booking/`, `components/account/`,
+  `components/services/`, `components/home/`; shared primitives in `components/ui/`.
+  Co-locate a route's private components under a matching subfolder
+  (e.g. `components/account/appointment-detail/`).
 
-```ts
-import '@/lib/opencals';
-```
+**Never define a component inside another component** — it remounts on every
+parent render. Define at module scope (or a separate file). Module-scope sibling
+helpers below a page are fine.
 
-This calls `setupOpencals({ baseUrl, apiKey, logging })` which configures the global client with:
-- API key interceptor (adds `X-Api-Key` header)
-- Error handler interceptor (throws `OpencalsApiError` on non-OK responses)
-- Logging interceptor (dev only)
+**Use the shared UI primitives — don't hand-style buttons/inputs inline.**
+- `components/ui/button.tsx` — `<Button variant size fullWidth>`. Variants:
+  `primary` (solid charcoal → hovers to accent), `outline` (bordered `charcoal/10`
+  → hovers to cream), `ghost` (text link → hovers to accent). Sizes `sm|md|lg`.
+  All buttons are SQUARED (`rounded-none`) — this is the canonical shape for haar's
+  minimalist salon aesthetic; don't reintroduce rounded/pill buttons. haar uses
+  plain Tailwind color classes (`charcoal`, `accent`, `cream`, `warm-gray`), NOT
+  CSS-var tokens like the other templates. Pass only layout classes (`mt-*`,
+  `flex-1`, `gap-*`, `fullWidth` for `w-full`) via `className`; color/padding/
+  rounding/font/tracking come from the variant/size.
+- `components/ui/input.tsx` — `<Input>` / `<Textarea>` for the canonical squared
+  box text field (`border border-charcoal/10 bg-white ... focus:border-charcoal`).
+- Leave genuinely-different controls inline: selection/toggle chips with an
+  active/selected state (staff/time/day/variant/location pickers, step indicator),
+  destructive buttons (red `border-red-200 text-red-600` / `bg-red-600` — no
+  destructive variant), `<select>`, checkboxes/radios, icon-only controls
+  (hamburger/close/qty +/-), the compact promo-code apply/input group, the contact
+  page's underline (`border-b-2`) fields, and navigation rendered as `next/link`
+  `<Link>` (Button renders a `<button>` and has no anchor mode).
 
-### Error Handling in API Routes
+**Hooks are single-concern.** Split multi-purpose hooks so each has one
+responsibility and independent dependencies (see `hooks/use-checkout-questions.ts`,
+`hooks/use-payment-providers.ts`, `hooks/use-cart-expiry.ts`, split out of the
+checkout context / cart context). A large hook may remain as a thin orchestrator
+that composes the smaller ones (`hooks/use-booking-flow.ts`).
 
-The SDK throws `OpencalsApiError` on any non-2xx response. All API routes use the shared handler:
+## Re-render hygiene
 
-```ts
-import { handleApiError } from '@/lib/api-error-handler';
+- **Memoize context provider values** with `useMemo` — an inline `value={{...}}`
+  object makes every consumer re-render on each provider render. All contexts here
+  (`settings`, `location`, `timezone`, `cart`, `checkout`) follow this.
+- Hoist static objects (framer-motion `initial`/`animate`/`transition`, default
+  non-primitive props) to module-level `const`s instead of recreating them inline.
+- `React.memo` leaf components that take stable props and render often
+  (e.g. `components/booking/step-indicator.tsx`).
+- Prefer a ternary (`cond ? <x/> : null`) over `cond && <x/>` for conditional
+  rendering, to avoid accidentally rendering `0`/`''`.
 
-export async function POST(request: NextRequest) {
-  try {
-    const { data } = await SomeService.method({ body });
-    return NextResponse.json(data);
-  } catch (err) {
-    return handleApiError(err);
-  }
-}
-```
+## Bundle
 
-`handleApiError` extracts status code, error message, and field-level validation errors from the SDK error, preserving the backend's HTTP semantics for the client.
+- Load heavy / below-the-fold components with `next/dynamic`. Stripe is loaded
+  this way in `components/checkout/payment-step.tsx` (`StripePayment`, `ssr: false`)
+  so it isn't in the initial bundle.
+- Import directly from module paths; avoid barrel/index re-export files that pull
+  in more than you use.
 
-### Authentication (`lib/auth.ts`, `lib/api-auth.ts`)
+## Verifying changes
 
-- NextAuth v5 with credentials providers (email/password, OAuth via SDK)
-- SDK's `AuthService.signIn()` returns access + refresh tokens
-- Tokens stored in NextAuth JWT, auto-refreshed via `AuthService.refresh()`
-- API routes use `requireAuth()` to get `{ headers: { Authorization } }` or return 401
-
-### Service Classes
-
-The SDK uses class-based service architecture. Import the service class directly:
-
-```ts
-import { ProductService, CartService, StoreService } from '@opencals/storefront-sdk';
-```
-
-Key services: `ProductService`, `CartService`, `CheckoutService`, `AppointmentService`, `AuthService`, `SelfService`, `OrderService`, `PaymentService`, `LocationService`, `StaffMemberService`, `StoreService`, `AddonService`.
-
-## Architecture Patterns
-
-### API Routes (`app/api/`)
-
-- Thin wrappers around SDK service calls
-- Always import `'@/lib/opencals'` at the top
-- Use `handleApiError(err)` in catch blocks — never return generic "Internal server error"
-- Use `requireAuth()` for protected routes
-- Pass `X-Cart-Id` header for cart-scoped operations
-
-### Client-Side Data Fetching (`hooks/use-api-request.ts`)
-
-A unified hook for all API requests:
-
-```ts
-// GET (auto-fetches)
-const { data, error, loading } = useApiRequest<Product[]>('/api/products');
-
-// Mutation (manual trigger)
-const { execute, loading, error, fieldErrors } = useApiRequest<Cart>('/api/book', {
-  method: 'POST',
-  autoFetch: false,
-});
-await execute({ slot, numberOfAttendees });
-```
-
-### Form Submissions (`hooks/use-form-submit.ts`)
-
-Wraps `useApiRequest` and maps backend field errors to react-hook-form:
-
-```ts
-const { submit, isSubmitting, error } = useFormSubmit(form, {
-  url: '/api/auth/sign-up',
-});
-await submit({ email, password });
-// Field errors automatically set on the form
-```
-
-### Contexts
-
-| Context | Purpose |
-|---------|---------|
-| `SettingsProvider` | Store public settings (currency, time/date format, contact info) |
-| `CartProvider` | Cart state, cartId persistence (localStorage) |
-| `LocationProvider` | Multi-location selection |
-| `TimezoneProvider` | Client timezone detection |
-| `SessionProvider` | NextAuth session |
-
-### Currency Handling
-
-- **Catalog pages** (services, booking): use `currency` from `useSettings()` context
-- **Cart/checkout pages**: use `cart.paymentCurrencyCode` from the cart object
-- **Order pages**: use `order.paymentCurrencyCode` from the order object
-- Never hardcode `'USD'` — always pass the currency explicitly to `formatPrice()`
-
-## Booking Flow
-
-The booking page (`app/booking/[slug]/page.tsx`) uses `useBookingFlow` which orchestrates:
-
-1. `useProductData` — fetches product by slug, manages variants
-2. `useAvailability` — date/slot selection, fetches time slots
-3. `useBookingAddOns` — add-ons for the selected variant
-4. Step machine: date → time → add-ons → confirm
-
-## Code Quality Rules
-
-- No `as` type assertions unless interfacing with third-party libraries (NextAuth, Stripe)
-- SDK types are the source of truth — never redeclare them locally
-- All `formatPrice()` calls must pass an explicit currency parameter
-- No `catch { return generic 500 }` — always use `handleApiError`
-- Business logic lives in hooks, not components
-- Shared utilities go in `lib/` (pure functions) or `hooks/` (stateful)
-
-## Running
-
-```bash
-npm install
-npm run dev     # http://localhost:3000
-npm run build   # production build
-npm run lint    # eslint
-npx tsc --noEmit  # type check
-```
+- `npm run build` must pass. In the route summary, read-only pages should be `○`
+  (static) or `ƒ` (dynamic) Server Components — not shipped as pure client pages.
+- Smoke test: services list paints with no spinner on first load; location filter
+  updates via SWR; the booking flow (service → time → add-ons → confirm → add to
+  cart) and the checkout flow (customer → questions → payment) both complete.

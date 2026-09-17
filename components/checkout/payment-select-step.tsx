@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useCheckout } from '@/contexts/checkout-context';
+import { Button } from '@/components/ui/button';
 
 export function PaymentSelectStep() {
 	const { providers, selectedProvider, questions, submitting, isExpired, setStep, handleStartCheckout } = useCheckout();
@@ -62,13 +63,9 @@ export function PaymentSelectStep() {
 				</div>
 			</div>
 
-			<button
-				type="button"
-				onClick={() => setStep(questions.length > 0 ? 'questions' : 'customer')}
-				className="w-full border border-charcoal/10 px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-charcoal transition-colors hover:bg-cream"
-			>
+			<Button type="button" variant="outline" size="lg" fullWidth onClick={() => setStep(questions.length > 0 ? 'questions' : 'customer')}>
 				Back
-			</button>
+			</Button>
 		</motion.div>
 	);
 }
