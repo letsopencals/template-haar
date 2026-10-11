@@ -274,10 +274,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 					await nextAuthSignIn('checkout-token', {
 						accessToken: data.auth.accessToken,
 						refreshToken: data.auth.refreshToken,
-						customerId: data.customer?.id ?? '',
-						customerEmail: data.customer?.email ?? email,
-						customerFirstName: data.customer?.firstName ?? firstName,
-						customerLastName: data.customer?.lastName ?? lastName,
 						redirect: false,
 					});
 				}
@@ -290,7 +286,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 				setSubmitting(false);
 			}
 		},
-		[cartHeaders, email, firstName, lastName, clearCart, router],
+		[cartHeaders, clearCart, router],
 	);
 
 	const items = (cart?.items ?? []) as CartItem[];

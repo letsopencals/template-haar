@@ -112,32 +112,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 		// Auto-auth after checkout (receives tokens directly)
 		Credentials({
 			id: 'checkout-token',
-			credentials: {
-				accessToken: {},
-				refreshToken: {},
-				customerId: {},
-				customerEmail: {},
-				customerFirstName: {},
-				customerLastName: {},
-			},
+			// The tokens are verified against the API and the session is built from the profile they
+			// belong to, never from client-sent customer fields (the callback endpoint is public).
+			credentials: { accessToken: {}, refreshToken: {} },
 			async authorize(credentials) {
-				const { accessToken, refreshToken, customerId, customerEmail, customerFirstName, customerLastName } =
-					credentials as Record<string, string>;
+				const { accessToken, refreshToken } = credentials as { accessToken?: string; refreshToken?: string };
+				if (!accessToken || typeof accessToken !== 'string') return null;
 
-				if (!accessToken) return null;
+				try {
+					const { data: customer } = await SelfService.getProfile({
+						headers: { Authorization: `Bearer ${accessToken}` },
+						throwOnError: true,
+					});
+					if (!customer?.id) return null;
 
-				return {
-					id: customerId ?? 'checkout-customer',
-					email: customerEmail,
-					accessToken,
-					refreshToken: refreshToken ?? '',
-					customer: {
-						id: customerId ?? '',
-						email: customerEmail,
-						firstName: customerFirstName,
-						lastName: customerLastName,
-					},
-				};
+					return {
+						id: customer.id,
+						email: customer.email ?? undefined,
+						accessToken,
+						refreshToken: typeof refreshToken === 'string' ? refreshToken : '',
+						customer: mapCustomer(customer),
+					};
+				} catch {
+					return null;
+				}
 			},
 		}),
 		// Email verification token exchange
