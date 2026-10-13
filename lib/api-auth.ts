@@ -1,13 +1,13 @@
-import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { ACCESS_TOKEN_HEADER } from '@/lib/session-header';
 
 /**
- * Get the access token from the current session.
- * Returns null if not authenticated.
+ * The signed-in customer's access token, as refreshed by the middleware for this request
+ * (see lib/session-header.ts). Null when signed out or the session has expired.
  */
 export async function getAccessToken(): Promise<string | null> {
-	const session = await auth();
-	return session?.accessToken ?? null;
+	return (await headers()).get(ACCESS_TOKEN_HEADER) || null;
 }
 
 /**

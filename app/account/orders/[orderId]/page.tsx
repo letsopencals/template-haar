@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 import type { OrderDetailResponse as Order, OrderDetailLineItem as OrderLineItem, AppointmentStatusType } from '@opencals/storefront-sdk';
+import { onSessionExpired } from '@/lib/session-expired';
 
 export default function OrderDetailPage() {
 	const { orderId } = useParams<{ orderId: string }>();
@@ -17,6 +18,7 @@ export default function OrderDetailPage() {
 		async function fetchOrder() {
 			try {
 				const res = await fetch(`/api/account/orders/${orderId}`);
+				if (res.status === 401) return onSessionExpired();
 				if (res.ok) {
 					setOrder(await res.json());
 				}

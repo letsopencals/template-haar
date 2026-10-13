@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 import type { OrderListItemResponse as Order, CollectionMeta, OrderListLineItem as OrderLineItem } from '@opencals/storefront-sdk';
+import { onSessionExpired } from '@/lib/session-expired';
 
 export default function OrdersPage() {
 	const [orders, setOrders] = useState<Order[]>([]);
@@ -18,6 +19,7 @@ export default function OrdersPage() {
 		setLoading(true);
 		try {
 			const res = await fetch(`/api/account/orders?take=10&page=${p}`);
+			if (res.status === 401) return onSessionExpired();
 			if (res.ok) {
 				const data: { data: Order[]; meta: CollectionMeta } = await res.json();
 				setOrders(data.data ?? []);

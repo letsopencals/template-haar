@@ -17,6 +17,7 @@ export async function PUT(
 			path: { appointmentId },
 			body: { notifyCustomer: true },
 			headers: auth.headers,
+			throwOnError: true,
 		});
 		return NextResponse.json(data);
 	} catch (err) {

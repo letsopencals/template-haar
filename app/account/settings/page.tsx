@@ -13,6 +13,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFormSubmit } from '@/hooks/use-form-submit';
+import { onSessionExpired } from '@/lib/session-expired';
 
 export default function SettingsPage() {
 	const [profileLoading, setProfileLoading] = useState(true);
@@ -38,6 +39,7 @@ export default function SettingsPage() {
 		async function fetchProfile() {
 			try {
 				const res = await fetch('/api/account/profile');
+				if (res.status === 401) return onSessionExpired();
 				if (res.ok) {
 					const data = await res.json();
 					profileForm.reset({

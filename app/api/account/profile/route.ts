@@ -9,7 +9,7 @@ export async function GET() {
 	if (auth.error) return auth.error;
 
 	try {
-		const { data } = await SelfService.getProfile({ headers: auth.headers });
+		const { data } = await SelfService.getProfile({ headers: auth.headers, throwOnError: true });
 		return NextResponse.json(data);
 	} catch (err) {
 		return handleApiError(err);
@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		const { data } = await SelfService.updateProfile({ body, headers: auth.headers });
+		const { data } = await SelfService.updateProfile({ body, headers: auth.headers, throwOnError: true });
 		return NextResponse.json(data);
 	} catch (err) {
 		return handleApiError(err);

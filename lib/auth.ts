@@ -8,6 +8,7 @@ import { AuthService, SelfService } from '@opencals/storefront-sdk';
 declare module 'next-auth' {
 	interface Session {
 		accessToken?: string;
+		error?: 'RefreshTokenError';
 		customer?: {
 			id: string;
 			email?: string;
@@ -33,6 +34,8 @@ declare module 'next-auth/jwt' {
 		accessToken?: string;
 		refreshToken?: string;
 		accessTokenExpires?: number;
+		/** Set when the refresh token was rejected: the session is over, sign in again */
+		error?: 'RefreshTokenError';
 		customer?: {
 			id: string;
 			email?: string;
@@ -42,20 +45,50 @@ declare module 'next-auth/jwt' {
 	}
 }
 
+/** Refresh this long before the access token's own expiry, so a request never carries a dead one. */
+const REFRESH_MARGIN_MS = 60 * 1000;
+
+/**
+ * When an access token expires, read from its `exp` claim. Customer tokens live 15 minutes (backend
+ * default); the fallback only covers a token we can't decode.
+ */
+function tokenExpiry(accessToken: string | undefined): number {
+	try {
+		const part = (accessToken ?? '').split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/') ?? '';
+		const { exp } = JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '='))) as { exp?: number };
+		if (typeof exp === 'number') return exp * 1000;
+	} catch {
+		// fall through
+	}
+	return Date.now() + 14 * 60 * 1000;
+}
+
+/**
+ * Swap the refresh token for a new pair. The backend rotates refresh tokens (each one works
+ * once), so the result must be persisted: that happens in the middleware, which runs first on
+ * every request and writes the session cookie (see middleware.ts). If the refresh is rejected
+ * and the old access token is still alive (a parallel request already rotated it), keep the old
+ * token; otherwise the session is over and the customer is dropped, so the app signs them out.
+ */
 async function refreshAccessToken(token: JWT): Promise<JWT> {
 	try {
+		if (!token.refreshToken) throw new Error('No refresh token');
 		const { data } = await AuthService.refresh({
 			headers: { Authorization: `Bearer ${token.refreshToken}` },
+			throwOnError: true,
 		});
+		if (!data?.accessToken) throw new Error('Empty refresh response');
 
 		return {
 			...token,
-			accessToken: data?.accessToken,
-			refreshToken: data?.refreshToken ?? token.refreshToken,
-			accessTokenExpires: Date.now() + 25 * 60 * 1000,
+			accessToken: data.accessToken,
+			refreshToken: data.refreshToken ?? token.refreshToken,
+			accessTokenExpires: tokenExpiry(data.accessToken),
+			error: undefined,
 		};
 	} catch {
-		return { ...token, accessToken: undefined, refreshToken: undefined };
+		if (token.accessToken && Date.now() < tokenExpiry(token.accessToken)) return token;
+		return { ...token, accessToken: undefined, refreshToken: undefined, accessTokenExpires: undefined, customer: undefined, error: 'RefreshTokenError' };
 	}
 }
 
@@ -174,22 +207,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 					...token,
 					accessToken: user.accessToken,
 					refreshToken: user.refreshToken,
-					accessTokenExpires: Date.now() + 25 * 60 * 1000,
+					accessTokenExpires: tokenExpiry(user.accessToken),
 					customer: user.customer,
+					error: undefined,
 				};
 			}
 
+			// Session already over: nothing to refresh with
+			if (token.error) return token;
+
 			// Token still valid
-			if (token.accessTokenExpires && Date.now() < token.accessTokenExpires) {
+			if (token.accessTokenExpires && Date.now() < token.accessTokenExpires - REFRESH_MARGIN_MS) {
 				return token;
 			}
 
-			// Refresh
 			return refreshAccessToken(token);
 		},
 		async session({ session, token }) {
 			session.accessToken = token.accessToken;
-			session.customer = token.customer;
+			// No access token means signed out, even though the cookie still exists
+			session.customer = token.accessToken ? token.customer : undefined;
+			session.error = token.error;
 			return session;
 		},
 	},

@@ -1,12 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import '@/lib/opencals';
+import { SelfService } from '@opencals/storefront-sdk';
+import { NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/api-auth';
+import { handleApiError } from '@/lib/api-error-handler';
 
-export async function GET(_request: NextRequest) {
-	const session = await auth();
+export async function GET() {
+	const { headers, error } = await requireAuth();
+	if (error) return error;
 
-	if (!session?.customer) {
-		return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+	try {
+		const { data } = await SelfService.getProfile({ headers, throwOnError: true });
+		return NextResponse.json({ id: data.id, email: data.email ?? undefined, firstName: data.firstName ?? undefined, lastName: data.lastName ?? undefined });
+	} catch (err) {
+		return handleApiError(err);
 	}
-
-	return NextResponse.json(session.customer);
 }

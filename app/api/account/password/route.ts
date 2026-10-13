@@ -10,7 +10,7 @@ export async function PUT(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		await SelfService.changePassword({ body, headers: auth.headers });
+		await SelfService.changePassword({ body, headers: auth.headers, throwOnError: true });
 		return new NextResponse(null, { status: 204 });
 	} catch (err) {
 		return handleApiError(err);

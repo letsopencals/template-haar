@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { formatDuration } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 import type { AppointmentListItemResponse as Appointment, CollectionMeta, AppointmentStatusType } from '@opencals/storefront-sdk';
+import { onSessionExpired } from '@/lib/session-expired';
 
 export default function AppointmentsPage() {
 	const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -18,6 +19,7 @@ export default function AppointmentsPage() {
 		setLoading(true);
 		try {
 			const res = await fetch(`/api/account/appointments?take=10&page=${p}`);
+			if (res.status === 401) return onSessionExpired();
 			if (res.ok) {
 				const data: { data: Appointment[]; meta: CollectionMeta } = await res.json();
 				setAppointments(data.data ?? []);

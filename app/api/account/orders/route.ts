@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 		const { data } = await OrderService.list({
 			query: { take: Number(take), page: Number(page) },
 			headers: auth.headers,
+			throwOnError: true,
 		});
 		return NextResponse.json(data);
 	} catch (err) {

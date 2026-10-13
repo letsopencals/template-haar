@@ -21,6 +21,7 @@ export async function PUT(
 				notifyCustomer: true,
 			},
 			headers: auth.headers,
+			throwOnError: true,
 		});
 		return NextResponse.json(data);
 	} catch (err) {

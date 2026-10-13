@@ -13,7 +13,7 @@ export async function GET(
 	if (auth.error) return auth.error;
 
 	try {
-		const { data } = await OrderService.find({ path: { orderId }, headers: auth.headers });
+		const { data } = await OrderService.find({ path: { orderId }, headers: auth.headers, throwOnError: true });
 		return NextResponse.json(data);
 	} catch (err) {
 		return handleApiError(err);
