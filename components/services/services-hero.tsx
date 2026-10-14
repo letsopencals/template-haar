@@ -1,44 +1,50 @@
-'use client';
-
-import { motion } from 'framer-motion';
+import { RevealText, Reveal } from '@/components/motion/reveal';
+import { ScissorRule } from '@/components/motifs/scissor-rule';
 import { LocationFilter } from './location-filter';
 
-const EYEBROW_INITIAL = { opacity: 0, y: 20 };
-const EYEBROW_ANIMATE = { opacity: 1, y: 0 };
+interface ServicesHeroProps {
+	count: number;
+	/** Pre-formatted lowest price, e.g. "$40". */
+	fromLabel: string | null;
+}
 
-export function ServicesHero() {
+/** "Nº 02 — The Menu" masthead: folio rule, display headline, standfirst and the salon tabs. */
+export function ServicesHero({ count, fromLabel }: ServicesHeroProps) {
 	return (
-		<section id="services-hero" className="bg-white pt-32 pb-20 lg:pt-40 lg:pb-28">
-			<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
-				<motion.p
-					initial={EYEBROW_INITIAL}
-					animate={EYEBROW_ANIMATE}
-					transition={{ duration: 0.6, delay: 0.1 }}
-					className="text-xs font-semibold uppercase tracking-[0.3em] text-accent"
-				>
-					What We Offer
-				</motion.p>
-				<motion.h1
-					initial={{ opacity: 0, y: 30 }}
-					animate={EYEBROW_ANIMATE}
-					transition={{ duration: 0.8, delay: 0.2 }}
-					className="heading-display mt-4 text-6xl text-charcoal md:text-7xl lg:text-8xl"
-				>
-					OUR
-					<br />
-					<span className="heading-display-italic text-accent">Services</span>
-				</motion.h1>
-				<motion.p
-					initial={EYEBROW_INITIAL}
-					animate={EYEBROW_ANIMATE}
-					transition={{ duration: 0.6, delay: 0.4 }}
-					className="mt-8 max-w-xl text-lg leading-relaxed text-warm-gray"
-				>
-					Every service is a tailored experience, combining technical mastery
-					with creative artistry to deliver exceptional results.
-				</motion.p>
+		<section id="services-hero" className="grain bg-paper pt-32 pb-10 lg:pt-44 lg:pb-14">
+			<div className="container-x">
+				<Reveal className="flex items-center justify-between gap-6 border-b border-line pb-4">
+					<span className="eyebrow text-warm-gray">Nº 02 — The Menu</span>
+					<span className="eyebrow tabular hidden text-warm-gray sm:inline">
+						{count} {count === 1 ? 'service' : 'services'}
+						{fromLabel ? ` · from ${fromLabel}` : ''}
+					</span>
+				</Reveal>
 
-				<LocationFilter />
+				<div className="mt-10 grid gap-10 lg:mt-14 lg:grid-cols-12 lg:items-end">
+					<h1 className="display-xl text-charcoal lg:col-span-8">
+						<RevealText as="span" text="The" trigger="mount" lineClassName="pb-[0.06em]" />
+						<RevealText
+							as="span"
+							text="Menu."
+							trigger="mount"
+							delay={0.12}
+							className="italic-display -mt-[0.06em] block pl-[0.6em] text-accent"
+							lineClassName="pb-[0.12em]"
+						/>
+					</h1>
+					<Reveal delay={0.3} className="lg:col-span-4 lg:pb-6">
+						<p className="max-w-[40ch] text-[17px] leading-[1.7] text-warm-gray">
+							Every appointment begins with a conversation. Choose a service, then the option, the chair and the
+							hour — we&rsquo;ll do the rest by hand.
+						</p>
+					</Reveal>
+				</div>
+
+				<div className="mt-12">
+					<LocationFilter />
+				</div>
+				<ScissorRule className="mt-2" />
 			</div>
 		</section>
 	);

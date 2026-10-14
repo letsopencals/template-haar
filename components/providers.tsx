@@ -6,6 +6,7 @@ import { CartProvider } from '@/contexts/cart-context';
 import { TimezoneProvider } from '@/contexts/timezone-context';
 import { LocationProvider } from '@/contexts/location-context';
 import { SettingsProvider } from '@/contexts/settings-context';
+import { SmoothScroll } from '@/components/motion/smooth-scroll';
 
 export function Providers({
 	children,
@@ -19,7 +20,9 @@ export function Providers({
 			<SettingsProvider initialSettings={initialSettings}>
 				<TimezoneProvider>
 					<LocationProvider>
-						<CartProvider>{children}</CartProvider>
+						<CartProvider>
+							<SmoothScroll>{children}</SmoothScroll>
+						</CartProvider>
 					</LocationProvider>
 				</TimezoneProvider>
 			</SettingsProvider>

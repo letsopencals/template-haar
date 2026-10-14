@@ -1,70 +1,84 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { useCheckout } from '@/contexts/checkout-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Field } from './field';
+import { DETAILS_FORM_ID } from './form-ids';
 
+/** 01 — Your details. Submits through the context's handleSaveCustomer. */
 export function CustomerStep() {
-	const { email, firstName, lastName, setEmail, setFirstName, setLastName, submitting, isExpired, handleSaveCustomer } =
-		useCheckout();
+	const {
+		email,
+		firstName,
+		lastName,
+		customerId,
+		setEmail,
+		setFirstName,
+		setLastName,
+		submitting,
+		isExpired,
+		handleSaveCustomer,
+	} = useCheckout();
 
 	return (
-		<motion.form
-			key="customer"
-			initial={{ opacity: 0, x: 20 }}
-			animate={{ opacity: 1, x: 0 }}
-			exit={{ opacity: 0, x: -20 }}
-			transition={{ duration: 0.3 }}
-			onSubmit={handleSaveCustomer}
-			className="space-y-6"
-		>
-			<div className="border border-charcoal/10 p-6">
-				<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">Contact Information</h3>
-				<div className="mt-6 space-y-4">
-					<div>
-						<label className="mb-1 block text-xs font-medium text-warm-gray">
-							Email <span className="text-accent">*</span>
-						</label>
-						<Input
-							type="email"
-							required
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							placeholder="your@email.com"
-						/>
-					</div>
-					<div className="grid gap-4 sm:grid-cols-2">
-						<div>
-							<label className="mb-1 block text-xs font-medium text-warm-gray">First Name</label>
-							<Input
-								type="text"
-								value={firstName}
-								onChange={(e) => setFirstName(e.target.value)}
-								placeholder="Jane"
-							/>
-						</div>
-						<div>
-							<label className="mb-1 block text-xs font-medium text-warm-gray">Last Name</label>
-							<Input
-								type="text"
-								value={lastName}
-								onChange={(e) => setLastName(e.target.value)}
-								placeholder="Smith"
-							/>
-						</div>
-					</div>
-				</div>
+		<form id={DETAILS_FORM_ID} onSubmit={handleSaveCustomer} className="space-y-6">
+			{customerId ? null : (
+				<p className="text-sm text-warm-gray">
+					Been with us before?{' '}
+					<Link href="/auth/sign-in?callbackUrl=/checkout" className="link-underline text-charcoal hover:text-accent">
+						Sign in
+					</Link>{' '}
+					and we&rsquo;ll fill this in.
+				</p>
+			)}
+			<Field htmlFor="checkout-email" label="Email" required>
+				<Input
+					id="checkout-email"
+					type="email"
+					required
+					autoComplete="email"
+					value={email}
+					onChange={(e) => setEmail(e.target.value)}
+					placeholder="you@example.com"
+				/>
+			</Field>
+			<div className="grid gap-6 sm:grid-cols-2">
+				<Field htmlFor="checkout-first-name" label="First name">
+					<Input
+						id="checkout-first-name"
+						type="text"
+						autoComplete="given-name"
+						value={firstName}
+						onChange={(e) => setFirstName(e.target.value)}
+						placeholder="Jane"
+					/>
+				</Field>
+				<Field htmlFor="checkout-last-name" label="Last name">
+					<Input
+						id="checkout-last-name"
+						type="text"
+						autoComplete="family-name"
+						value={lastName}
+						onChange={(e) => setLastName(e.target.value)}
+						placeholder="Smith"
+					/>
+				</Field>
 			</div>
-
-			<Button type="submit" variant="primary" size="lg" fullWidth disabled={submitting || !email || isExpired}>
-				{submitting ? 'Saving...' : 'Continue'}
-				{!submitting && (
-					<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-						<path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-					</svg>
-				)}
+			<p className="text-xs leading-relaxed text-warm-gray">
+				We&rsquo;ll send your confirmation and a reminder the day before. Nothing else unless you ask.
+			</p>
+			<Button
+				type="submit"
+				variant="primary"
+				size="lg"
+				className="max-lg:hidden"
+				disabled={submitting || !email || isExpired}
+			>
+				{submitting ? 'Saving…' : 'Continue'}
+				{submitting ? null : <span aria-hidden>→</span>}
 			</Button>
-		</motion.form>
+		</form>
 	);
 }

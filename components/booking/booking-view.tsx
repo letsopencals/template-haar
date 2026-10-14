@@ -1,475 +1,295 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { ProductListItemResponse } from '@opencals/storefront-sdk';
-import { computeAddOnLineTotal, formatDuration, formatPrice, getProductImage } from '@/lib/format';
-import { DatePicker } from '@/components/booking/date-picker';
-import { TimeSlots } from '@/components/booking/time-slots';
-import { StaffSelector } from '@/components/booking/staff-selector';
-import { LocationSelector } from '@/components/booking/location-selector';
-import { AddOnsSelector } from '@/components/booking/addons-selector';
-import { BookingStepIndicator } from '@/components/booking/step-indicator';
-import { Button } from '@/components/ui/button';
-import { useBookingFlow } from '@/hooks/use-booking-flow';
+import { useBookingFlow, type BookingDeepLink } from '@/hooks/use-booking-flow';
 import { useSettings } from '@/contexts/settings-context';
+import { useSmoothScroll } from '@/components/motion/smooth-scroll';
+import { buttonClasses } from '@/components/ui/button';
+import { formatDuration, formatPrice, getProductImage } from '@/lib/format';
+import { getStaffName } from '@/lib/staff-utils';
+import { SECTION_TITLES, type BookingSectionIndex } from '@/lib/booking-constants';
+import { salonName } from '@/components/services/location-filter';
+import { BookSection, type SectionState } from './book-section';
+import { BookingHeader } from './booking-header';
+import { ServicePicker } from './service-picker';
+import { StylistPicker } from './stylist-picker';
+import { DayRibbon } from './day-ribbon';
+import { SlotGrid } from './slot-grid';
+import { StylistConfirm } from './stylist-confirm';
+import { FinishingTouches } from './finishing-touches';
+import { AppointmentCard } from './appointment-card';
+import { MobileCardBar } from './mobile-card-bar';
+import { formatLongDate, formatSlotRange, formatSlotTime } from './slot-time';
 
-// Static framer-motion prop objects hoisted to module scope so they aren't
-// recreated on every render.
-const FADE_UP_INITIAL = { opacity: 0, y: 20 };
-const FADE_UP_ANIMATE = { opacity: 1, y: 0 };
-const FADE_UP_30_INITIAL = { opacity: 0, y: 30 };
-const EXPAND_INITIAL = { opacity: 0, height: 0 };
-const EXPAND_ANIMATE = { opacity: 1, height: 'auto' as const };
-const EXPAND_TRANSITION = { duration: 0.3 };
+const SECTION_IDS = ['book-service', 'book-stylist', 'book-time', 'book-extras'] as const;
 
-export function BookingView({
-	slug,
-	initialProduct,
-}: {
+interface BookingViewProps {
 	slug: string;
 	initialProduct: ProductListItemResponse | null;
-}) {
-	const { currency } = useSettings();
-	const flow = useBookingFlow(slug, initialProduct);
+	deepLink?: BookingDeepLink;
+}
 
-	if (flow.loading) {
+/**
+ * The consultation-card composer: numbered sections on the left unlock in
+ * order; the live appointment card on the right (a bottom sheet below lg)
+ * writes itself in as choices are made and flips once the chair is held.
+ */
+export function BookingView({ slug, initialProduct, deepLink }: BookingViewProps) {
+	const { currency, timeFormat } = useSettings();
+	const flow = useBookingFlow(slug, initialProduct, deepLink);
+	const lenis = useSmoothScroll();
+	const [sheetOpen, setSheetOpen] = useState(false);
+	const sectionRefs = useRef<Array<HTMLElement | null>>([]);
+
+	// Bring the newly unlocked section into view — only after the visitor has
+	// done something, so data settling on load (or StrictMode's double effect)
+	// never scrolls the page away from the header.
+	const { reached } = flow;
+	const prevReached = useRef(reached);
+	const interacted = useRef(false);
+	useEffect(() => {
+		const mark = () => {
+			interacted.current = true;
+		};
+		window.addEventListener('pointerdown', mark, { once: true });
+		window.addEventListener('keydown', mark, { once: true });
+		return () => {
+			window.removeEventListener('pointerdown', mark);
+			window.removeEventListener('keydown', mark);
+		};
+	}, []);
+	useEffect(() => {
+		if (prevReached.current === reached) return;
+		prevReached.current = reached;
+		if (!interacted.current) return;
+		const el = sectionRefs.current[reached];
+		if (!el) return;
+		const timer = window.setTimeout(() => {
+			if (lenis) lenis.scrollTo(el, { offset: -96, duration: 1.1 });
+			else el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}, 120);
+		return () => window.clearTimeout(timer);
+	}, [reached, lenis]);
+
+	const onReserved = useCallback(() => {
+		if (window.matchMedia('(max-width: 1023px)').matches) setSheetOpen(true);
+	}, []);
+
+	if (flow.loading) return <ComposerSkeleton />;
+
+	if (!flow.product || !flow.activeVariant) {
 		return (
-			<div className="bg-white pt-32 pb-20 lg:pt-40">
-				<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
-					<div className="animate-pulse">
-						<div className="h-4 w-32 rounded bg-cream-dark" />
-						<div className="mt-6 h-12 w-80 rounded bg-cream-dark" />
-						<div className="mt-12 grid gap-12 lg:grid-cols-12 lg:gap-16">
-							<div className="lg:col-span-5">
-								<div className="aspect-[4/3] rounded bg-cream-dark" />
-								<div className="mt-8 space-y-4">
-									<div className="h-4 w-full rounded bg-cream-dark" />
-									<div className="h-4 w-3/4 rounded bg-cream-dark" />
-								</div>
-							</div>
-							<div className="lg:col-span-7">
-								<div className="h-64 rounded bg-cream-dark" />
-							</div>
-						</div>
-					</div>
-				</div>
+			<div className="container-x pt-40 pb-section text-center">
+				<p className="font-display text-3xl italic text-warm-gray">{flow.productError ?? 'We couldn’t find that service.'}</p>
+				<Link href="/services" className={buttonClasses({ variant: 'outline', size: 'md', className: 'mt-8' })}>
+					&larr; Back to The Menu
+				</Link>
 			</div>
 		);
 	}
 
-	if (flow.error && !flow.product) {
-		return (
-			<div className="bg-white pt-32 pb-20 lg:pt-40">
-				<div className="mx-auto max-w-[1400px] px-6 text-center lg:px-10">
-					<p className="text-warm-gray">{flow.error}</p>
-					<Link
-						href="/services"
-						className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-accent hover:underline"
-					>
-						&larr; Back to Services
-					</Link>
-				</div>
-			</div>
-		);
-	}
+	const { product, activeVariant, variants, allStaff, staffForLocation, selectedSlot, timezone } = flow;
+	const locations = activeVariant.locations ?? [];
+	const hasStaff = allStaff.length > 0;
+	const anyMode = hasStaff && !flow.selectedStaffId;
 
-	if (!flow.product) return null;
+	// Section states (derived; a section is only "done" once it's actually answered).
+	const serviceState: SectionState = reached === 0 ? 'open' : 'done';
+	const stylistState: SectionState = reached < 1 ? 'locked' : reached === 1 || !flow.stylistChosen ? 'open' : 'done';
+	const timeState: SectionState = reached < 2 ? 'locked' : reached === 2 || !flow.timeComplete ? 'open' : 'done';
+	const extrasState: SectionState = reached >= 3 && flow.timeComplete ? 'open' : 'locked';
 
-	const imageUrl = getProductImage(flow.product);
+	const serviceSummary = [
+		flow.hasVariants ? activeVariant.variantTitle || activeVariant.title : null,
+		formatDuration(activeVariant.duration),
+		flow.selectedLocation ? salonName(flow.selectedLocation) : null,
+	]
+		.filter(Boolean)
+		.join(' · ');
+	const stylistSummary = flow.selectedStaffId && flow.finalStaff ? getStaffName(flow.finalStaff) : 'Any stylist — first available';
+	const timeSummary = selectedSlot
+		? `${formatLongDate(selectedSlot.fromDate)} · ${formatSlotRange(selectedSlot, timezone, timeFormat)}${anyMode && flow.finalStaff ? ` · ${getStaffName(flow.finalStaff)}` : ''}`
+		: '';
+
+	const sectionNumber = (i: BookingSectionIndex) => (hasStaff || i < 1 ? i : i - 1);
+	const editable = flow.hasVariants || locations.length > 1;
+	const image = getProductImage(product) ?? getProductImage(activeVariant);
+
+	const card = <AppointmentCard flow={flow} currency={currency} timeFormat={timeFormat} onReserved={onReserved} />;
+	const status = flow.bookingSuccess
+		? 'Continue to checkout'
+		: flow.missing.length
+			? `Still to choose: ${flow.missing.join(', ')}`
+			: 'Ready to reserve';
 
 	return (
-		<>
-			{/* Hero */}
-			<section className="bg-white pt-32 pb-12 lg:pt-40 lg:pb-16">
-				<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
-					<motion.div
-						initial={FADE_UP_INITIAL}
-						animate={FADE_UP_ANIMATE}
-						transition={{ duration: 0.6 }}
-					>
-						<Link
-							href="/services"
-							className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-warm-gray transition-colors hover:text-accent"
+		<div className="bg-paper pt-32 pb-36 lg:pt-40 lg:pb-section">
+			<div className="container-x">
+				<BookingHeader
+					title={product.title ?? activeVariant.title ?? 'Service'}
+					description={product.description || activeVariant.description}
+					image={image}
+					meta={`${formatDuration(activeVariant.duration)} · ${formatPrice(flow.basePrice, currency)}`}
+				/>
+
+				<div className="mt-16 grid grid-cols-1 gap-12 lg:mt-24 lg:grid-cols-12 lg:gap-16">
+					<div className="min-w-0 lg:col-span-7">
+						<BookSection
+							ref={(el) => {
+								sectionRefs.current[0] = el;
+							}}
+							id={SECTION_IDS[0]}
+							index={sectionNumber(0)}
+							title={SECTION_TITLES.service}
+							state={serviceState}
+							summary={serviceSummary}
+							onEdit={editable ? () => flow.openSection(0) : undefined}
 						>
-							<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-							</svg>
-							Back to Services
-						</Link>
-						<h1 className="heading-display mt-6 text-5xl text-charcoal md:text-6xl lg:text-7xl">
-							{flow.product.title}
-						</h1>
-					</motion.div>
-				</div>
-			</section>
+							<ServicePicker
+								variants={variants}
+								hasVariants={flow.hasVariants}
+								selectedVariantId={flow.selectedVariantId}
+								onSelectVariant={flow.selectVariant}
+								locations={locations}
+								selectedLocationId={flow.selectedLocationId}
+								onSelectLocation={flow.selectLocation}
+								currency={currency}
+								onContinue={flow.continueFromService}
+							/>
+						</BookSection>
 
-			{/* Booking content */}
-			<section className="bg-white pb-20 lg:pb-32">
-				<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
-					<div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
-						{/* Left — Product info */}
-						<motion.div
-							initial={FADE_UP_30_INITIAL}
-							animate={FADE_UP_ANIMATE}
-							transition={{ duration: 0.7, delay: 0.1 }}
-							className="lg:col-span-5"
+						{hasStaff ? (
+							<BookSection
+								ref={(el) => {
+									sectionRefs.current[1] = el;
+								}}
+								id={SECTION_IDS[1]}
+								index={sectionNumber(1)}
+								title={SECTION_TITLES.stylist}
+								state={stylistState}
+								summary={stylistSummary}
+								lockedHint="Choose your option first"
+								onEdit={() => flow.openSection(1)}
+							>
+								<StylistPicker
+									staff={staffForLocation}
+									selectedStaffId={flow.selectedStaffId}
+									answered={flow.stylistChosen}
+									onSelect={flow.selectStaff}
+								/>
+							</BookSection>
+						) : null}
+
+						<BookSection
+							ref={(el) => {
+								sectionRefs.current[2] = el;
+							}}
+							id={SECTION_IDS[2]}
+							index={sectionNumber(2)}
+							title={SECTION_TITLES.time}
+							state={timeState}
+							summary={timeSummary}
+							lockedHint={hasStaff ? 'Choose a stylist first' : 'Choose your option first'}
+							onEdit={() => flow.openSection(2)}
 						>
-							<div className="aspect-[4/3] overflow-hidden">
-								{imageUrl ? (
-									<img src={imageUrl} alt={flow.product.title ?? 'Service'} className="h-full w-full object-cover" />
-								) : (
-									<div className="image-placeholder h-full w-full" />
-								)}
-							</div>
-
-							{/* Variant tabs */}
-							{flow.hasVariants && flow.variants.length > 1 && (
-								<div className="mt-6 flex flex-wrap gap-2">
-									{flow.variants.map((v) => (
-										<button
-											key={v.id}
-											onClick={() => flow.setSelectedVariantId(v.id)}
-											className={`border px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition-all ${
-												(flow.activeVariant?.id ?? flow.variants[0]?.id) === v.id
-													? 'border-charcoal bg-charcoal text-white'
-													: 'border-charcoal/10 text-charcoal hover:border-charcoal/30'
-											}`}
-										>
-											{v.variantTitle}
-										</button>
-									))}
-								</div>
-							)}
-
+							<DayRibbon
+								selected={flow.selectedDate}
+								onSelect={flow.selectDate}
+								availableDates={flow.availableDates}
+								timezone={timezone}
+							/>
 							<div className="mt-8">
-								{(flow.activeVariant?.description ?? flow.product.description) && (
-									<p className="text-base leading-relaxed text-warm-gray">
-										{flow.activeVariant?.description ?? flow.product.description}
-									</p>
+								{flow.selectedDate ? (
+									<>
+										<p className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+											<span className="font-display text-xl text-charcoal">{formatLongDate(flow.selectedDate)}</span>
+											<span className="text-xs text-warm-gray">Times in {timezone.replace(/_/g, ' ')}</span>
+										</p>
+										<SlotGrid
+											slots={flow.slots}
+											selected={selectedSlot}
+											onSelect={flow.selectTimeSlot}
+											loading={flow.slotsLoading}
+											timezone={timezone}
+											timeFormat={timeFormat}
+											staff={anyMode ? staffForLocation : undefined}
+										/>
+										{anyMode && selectedSlot ? (
+											<StylistConfirm
+												staff={flow.slotStaff}
+												confirmedId={flow.confirmedStaffId}
+												onConfirm={flow.confirmStaff}
+												timeLabel={formatSlotTime(selectedSlot.fromDate, selectedSlot.fromTime, timezone, timeFormat)}
+											/>
+										) : null}
+									</>
+								) : (
+									<p className="font-display text-lg italic text-warm-gray">Choose a day to see the times.</p>
 								)}
-								<div className="mt-6 space-y-0 border-t border-charcoal/10">
-									<div className="flex items-center justify-between border-b border-charcoal/10 py-4">
-										<span className="text-sm text-warm-gray">Duration</span>
-										<span className="text-sm font-semibold text-charcoal">
-											{formatDuration(flow.activeVariant?.duration ?? flow.product.duration)}
-										</span>
-									</div>
-									<div className="flex items-center justify-between border-b border-charcoal/10 py-4">
-										<span className="text-sm text-warm-gray">Price</span>
-										<span className="text-sm font-semibold text-charcoal">
-											{formatPrice(flow.activeVariant?.price ?? flow.product.price, currency)}
-										</span>
-									</div>
-								</div>
 							</div>
-						</motion.div>
+						</BookSection>
 
-						{/* Right — Booking flow */}
-						<motion.div
-							initial={FADE_UP_30_INITIAL}
-							animate={FADE_UP_ANIMATE}
-							transition={{ duration: 0.7, delay: 0.2 }}
-							className="lg:col-span-7"
+						<BookSection
+							ref={(el) => {
+								sectionRefs.current[3] = el;
+							}}
+							id={SECTION_IDS[3]}
+							index={sectionNumber(3)}
+							title={SECTION_TITLES.extras}
+							state={extrasState}
+							lockedHint="Choose a time first"
 						>
-							<div className="sticky top-28">
-								{/* Step indicators */}
-								<BookingStepIndicator currentStep={flow.step} />
-
-								{/* Error banner */}
-								{flow.error && (
-									<div className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-										{flow.error}
-										<button onClick={() => flow.setError(null)} className="ml-2 font-medium underline">
-											Dismiss
-										</button>
-									</div>
-								)}
-
-								{/* Location selector */}
-								{flow.activeVariant?.locations && flow.activeVariant.locations.length > 0 && (
-									<div className="mb-6">
-										<LocationSelector
-											locations={flow.activeVariant.locations}
-											selected={flow.selectedLocationId ?? flow.activeVariant.locations[0]?.id ?? null}
-											onSelect={flow.setSelectedLocationId}
-										/>
-									</div>
-								)}
-
-								{/* Staff selector */}
-								{flow.staffForLocation.length > 0 && (
-									<div className="mb-6">
-										<StaffSelector
-											staffMembers={flow.staffForLocation}
-											selected={flow.selectedStaffId}
-											onSelect={flow.setSelectedStaffId}
-										/>
-									</div>
-								)}
-
-								{/* Date picker */}
-								<div className="border border-charcoal/10 p-6">
-									<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">
-										Select a Date
-									</h3>
-									<div className="mt-4">
-										<DatePicker selectedDate={flow.selectedDate} onDateSelect={flow.setSelectedDate} />
-									</div>
-								</div>
-
-								{/* Time slots */}
-								{flow.selectedDate && (
-									<motion.div
-										initial={EXPAND_INITIAL}
-										animate={EXPAND_ANIMATE}
-										transition={EXPAND_TRANSITION}
-										className="mt-6 overflow-hidden border border-charcoal/10 p-6"
-									>
-										<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">
-											Available Times
-										</h3>
-										<div className="mt-4">
-											<TimeSlots
-												slots={flow.slots}
-												selectedSlot={flow.selectedSlot}
-												onSlotSelect={flow.handleSlotSelect}
-												loading={flow.slotsLoading}
-												timezone={flow.timezone}
-												staffMembers={flow.staffForLocation}
-											/>
-										</div>
-									</motion.div>
-								)}
-
-								{/* Staff selection after slot pick (when top-level is "Any") */}
-								{flow.selectedSlot && !flow.selectedStaffId && flow.staffForLocation.length > 0 && (() => {
-									const slotStaff = flow.staffForLocation.filter(
-										(s) => flow.selectedSlot!.staffMemberIds?.includes(s.id),
-									);
-									if (slotStaff.length === 0) return null;
-									return (
-										<motion.div
-											initial={EXPAND_INITIAL}
-											animate={EXPAND_ANIMATE}
-											transition={EXPAND_TRANSITION}
-											className="mt-6"
-										>
-											<StaffSelector
-												staffMembers={slotStaff}
-												selected={flow.confirmedStaffId}
-												onSelect={flow.setConfirmedStaffId}
-											/>
-										</motion.div>
-									);
-								})()}
-
-								{/* Attendees selector */}
-								{(flow.activeVariant?.maxAttendees ?? flow.product.maxAttendees) > 1 && flow.selectedSlot && (
-									<motion.div
-										initial={EXPAND_INITIAL}
-										animate={EXPAND_ANIMATE}
-										transition={EXPAND_TRANSITION}
-										className="mt-6 border border-charcoal/10 p-6"
-									>
-										<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">
-											Number of Attendees
-										</h3>
-										<div className="mt-4 flex items-center gap-4">
-											<button
-												onClick={() => flow.setAttendees((a) => Math.max(1, a - 1))}
-												className="flex h-10 w-10 items-center justify-center border border-charcoal/10 text-charcoal transition-colors hover:bg-cream"
-											>
-												-
-											</button>
-											<span className="w-12 text-center text-lg font-semibold text-charcoal">{flow.attendees}</span>
-											<button
-												onClick={() =>
-													flow.setAttendees((a) =>
-														Math.min((flow.activeVariant?.maxAttendees ?? flow.product!.maxAttendees) - (flow.selectedSlot?.attendees ?? 0), a + 1),
-													)
-												}
-												className="flex h-10 w-10 items-center justify-center border border-charcoal/10 text-charcoal transition-colors hover:bg-cream"
-											>
-												+
-											</button>
-											<span className="text-xs text-warm-gray">
-												(max {(flow.activeVariant?.maxAttendees ?? flow.product.maxAttendees) - (flow.selectedSlot?.attendees ?? 0)} available)
-											</span>
-										</div>
-									</motion.div>
-								)}
-
-								{/* Add-ons step */}
-								{flow.selectedSlot && !flow.needsStaffSelection && flow.step === 'add-ons' && (
-									<motion.div
-										initial={FADE_UP_INITIAL}
-										animate={FADE_UP_ANIMATE}
-										transition={EXPAND_TRANSITION}
-										className="mt-6"
-									>
-										<AddOnsSelector
-											addOns={flow.availableAddOns}
-											loading={flow.addOnsLoading}
-											selected={flow.selectedAddOns}
-											bookedDurationUnits={flow.bookedDurationUnits}
-											currency={currency}
-											onChange={flow.updateAddOnQuantity}
-										/>
-										<Button variant="primary" size="lg" fullWidth className="mt-6" onClick={() => flow.setStep('confirm')}>
-											Continue
-											<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-												<path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-											</svg>
-										</Button>
-									</motion.div>
-								)}
-
-								{/* Booking summary */}
-								{flow.selectedSlot && !flow.needsStaffSelection && flow.step === 'confirm' && (
-									<motion.div
-										initial={FADE_UP_INITIAL}
-										animate={FADE_UP_ANIMATE}
-										transition={{ duration: 0.4, delay: 0.1 }}
-										className="mt-6 border border-charcoal/10 bg-cream/30 p-6"
-									>
-										<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">
-											Booking Summary
-										</h3>
-										<div className="mt-4 space-y-3">
-											<div className="flex justify-between text-sm">
-												<span className="text-warm-gray">Service</span>
-												<span className="text-right font-medium text-charcoal">
-													{flow.hasVariants && flow.product ? `${flow.product.title} — ${flow.activeVariant?.title}` : (flow.activeVariant?.title ?? flow.product?.title)}
-												</span>
-											</div>
-											{(() => {
-												const staffMember = flow.staffForLocation.find((s) => s.id === flow.finalStaffId);
-												return staffMember ? (
-													<div className="flex justify-between text-sm">
-														<span className="text-warm-gray">Stylist</span>
-														<span className="font-medium text-charcoal">{staffMember.firstName ?? 'Staff'}</span>
-													</div>
-												) : null;
-											})()}
-											{(() => {
-												const location = flow.activeVariant?.locations?.find((l) => l.id === flow.selectedLocationId);
-												return location ? (
-													<div className="flex justify-between text-sm">
-														<span className="text-warm-gray">Location</span>
-														<span className="font-medium text-charcoal">{location.title ?? 'Location'}</span>
-													</div>
-												) : null;
-											})()}
-											<div className="flex justify-between text-sm">
-												<span className="text-warm-gray">Date</span>
-												<span className="font-medium text-charcoal">
-													{flow.formatCustom(flow.selectedDate + 'T00:00:00', 'dddd, MMMM D, YYYY')}
-												</span>
-											</div>
-											<div className="flex justify-between text-sm">
-												<span className="text-warm-gray">Time</span>
-												<span className="font-medium text-charcoal">
-													{(() => {
-														const [start, end] = flow.formatTimeRange(flow.selectedSlot!.fromDate, flow.selectedSlot!.fromTime, flow.selectedSlot!.toDate, flow.selectedSlot!.toTime);
-														return `${start} - ${end}`;
-													})()}
-												</span>
-											</div>
-											<div className="flex justify-between text-sm">
-												<span className="text-warm-gray">Duration</span>
-												<span className="font-medium text-charcoal">{formatDuration(flow.activeVariant?.duration ?? flow.product.duration)}</span>
-											</div>
-											{flow.attendees > 1 && (
-												<div className="flex justify-between text-sm">
-													<span className="text-warm-gray">Attendees</span>
-													<span className="font-medium text-charcoal">{flow.attendees}</span>
-												</div>
-											)}
-											{flow.selectedAddOns.size > 0 && (
-												<div className="border-t border-charcoal/10 pt-3 space-y-1.5">
-													<p className="text-xs font-semibold uppercase tracking-[0.15em] text-warm-gray">Add-ons</p>
-													{Array.from(flow.selectedAddOns.entries()).map(([addOnId, qty]) => {
-														const addOn = flow.availableAddOns.find((a) => a.id === addOnId);
-														if (!addOn) return null;
-														const lineTotal = computeAddOnLineTotal(addOn, qty, flow.bookedDurationUnits);
-														return (
-															<div key={addOnId} className="flex justify-between text-xs">
-																<span className="text-warm-gray">
-																	{addOn.title ?? addOn.slug}
-																	{!addOn.durationMultiplied && qty > 1 && ` × ${qty}`}
-																</span>
-																<span className="font-medium text-charcoal">{formatPrice(lineTotal, currency)}</span>
-															</div>
-														);
-													})}
-												</div>
-											)}
-											<div className="border-t border-charcoal/10 pt-3">
-												<div className="flex justify-between">
-													<span className="text-sm font-semibold text-charcoal">Total</span>
-													<span className="text-lg font-bold text-charcoal">
-														{formatPrice((flow.activeVariant?.price ?? flow.product.price) * flow.attendees + flow.addOnsTotal, currency)}
-													</span>
-												</div>
-											</div>
-										</div>
-
-										{flow.bookingSuccess ? (
-											<div className="mt-6 space-y-3">
-												<div className="flex items-center gap-2 text-sm font-medium text-green-700">
-													<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-														<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-													</svg>
-													Added to cart!
-												</div>
-												<Link
-													href="/checkout"
-													className="flex w-full items-center justify-center gap-3 bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
-												>
-													Proceed to Checkout
-													<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-														<path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-													</svg>
-												</Link>
-												<Link
-													href="/services"
-													className="flex w-full items-center justify-center border border-charcoal/10 px-8 py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-charcoal transition-colors hover:bg-cream"
-												>
-													Add More Services
-												</Link>
-											</div>
-										) : (
-											<Button variant="primary" size="lg" fullWidth className="mt-6" onClick={flow.handleBooking} disabled={flow.booking}>
-												{flow.booking ? (
-													<>
-														<svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-															<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-															<path
-																className="opacity-75"
-																fill="currentColor"
-																d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-															/>
-														</svg>
-														Processing...
-													</>
-												) : (
-													<>
-														Add to Cart
-														<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-															<path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-														</svg>
-													</>
-												)}
-											</Button>
-										)}
-									</motion.div>
-								)}
-							</div>
-						</motion.div>
+							<FinishingTouches
+								addOns={flow.availableAddOns}
+								loading={flow.addOnsLoading}
+								selected={flow.selectedAddOns}
+								bookedDurationUnits={flow.bookedDurationUnits}
+								currency={currency}
+								onChange={flow.updateAddOnQuantity}
+								maxAttendees={flow.maxAttendees}
+								seatsLeft={flow.seatsLeft}
+								attendees={flow.attendees}
+								onAttendeesChange={flow.changeAttendees}
+							/>
+						</BookSection>
+						<div className="border-t border-line-strong" aria-hidden />
 					</div>
+
+					<aside className="hidden lg:col-span-5 lg:block xl:col-span-4 xl:col-start-9" aria-label="Your appointment">
+						<div className="sticky top-28">{card}</div>
+					</aside>
 				</div>
-			</section>
-		</>
+			</div>
+
+			<MobileCardBar
+				open={sheetOpen}
+				onOpenChange={setSheetOpen}
+				total={flow.total}
+				currency={currency}
+				status={status}
+				held={flow.bookingSuccess}
+			>
+				{card}
+			</MobileCardBar>
+		</div>
+	);
+}
+
+function ComposerSkeleton() {
+	return (
+		<div className="container-x pt-32 pb-section lg:pt-40" aria-busy="true" aria-label="Loading the service">
+			<div className="h-3 w-40 animate-pulse bg-cream-dark" />
+			<div className="mt-8 h-14 w-3/4 max-w-xl animate-pulse bg-cream-dark" />
+			<div className="mt-16 grid gap-12 lg:grid-cols-12">
+				<div className="space-y-6 lg:col-span-7">
+					{[0, 1, 2, 3].map((i) => (
+						<div key={i} className="h-20 animate-pulse bg-cream-dark" />
+					))}
+				</div>
+				<div className="hidden h-[32rem] animate-pulse bg-cream-dark lg:col-span-5 lg:block xl:col-span-4 xl:col-start-9" />
+			</div>
+		</div>
 	);
 }

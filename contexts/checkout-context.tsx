@@ -73,7 +73,7 @@ const CheckoutContext = createContext<CheckoutContextValue | undefined>(undefine
 export function CheckoutProvider({ children }: { children: ReactNode }) {
 	const router = useRouter();
 	const { data: session } = useSession();
-	const { cart, cartId, timeRemaining, extendCart, clearCart } = useCart();
+	const { cart, cartId, isLoaded, timeRemaining, extendCart, clearCart } = useCart();
 
 	const [step, setStep] = useState<CheckoutStep>('customer');
 	const [error, setError] = useState<string | null>(null);
@@ -109,12 +109,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 	const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 	const [paymentData, setPaymentData] = useState<CheckoutStartResponse | null>(null);
 
-	// Redirect if no cart
+	// Redirect if no cart — but only once CartProvider has read the stored cart id
+	// from localStorage. Before that cartId is always null, so a hard reload of
+	// /checkout would otherwise bounce to /services.
 	useEffect(() => {
-		if (!cartId && !checkoutComplete) {
+		if (isLoaded && !cartId && !checkoutComplete) {
 			router.replace('/services');
 		}
-	}, [cartId, checkoutComplete, router]);
+	}, [isLoaded, cartId, checkoutComplete, router]);
 
 	const cartHeaders = useCallback(
 		(): Record<string, string> =>
@@ -289,7 +291,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		[cartHeaders, clearCart, router],
 	);
 
-	const items = (cart?.items ?? []) as CartItem[];
+	const items = useMemo(() => (cart?.items ?? []) as CartItem[], [cart?.items]);
 	const isExpired = timeRemaining !== null && timeRemaining <= 0;
 	const minutes = timeRemaining !== null ? Math.floor(timeRemaining / 60) : null;
 	const seconds = timeRemaining !== null ? timeRemaining % 60 : null;

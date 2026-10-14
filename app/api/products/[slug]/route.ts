@@ -2,6 +2,7 @@ import '@/lib/opencals';
 import { ProductService } from '@opencals/storefront-sdk';
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api-error-handler';
+import { publicPayload } from '@/lib/public-payload';
 
 export async function GET(
 	_request: NextRequest,
@@ -11,7 +12,7 @@ export async function GET(
 
 	try {
 		const { data } = await ProductService.getBySlug({ path: { slug } });
-		return NextResponse.json(data);
+		return NextResponse.json(publicPayload(data));
 	} catch (err) {
 		return handleApiError(err);
 	}

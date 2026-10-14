@@ -1,328 +1,168 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { useId, useRef } from 'react';
 import Link from 'next/link';
+import { AnimatePresence, motion, type Transition } from 'framer-motion';
 import { useCart } from '@/contexts/cart-context';
-import { formatPrice, formatDuration } from '@/lib/format';
-import { useDateFormatter } from '@/hooks/use-date-formatter';
-import { useRef, useState } from 'react';
+import { useReducedMotion } from '@/components/motion/use-reduced-motion';
+import { DURATION, EASE_OUT, SPRING_SOFT } from '@/components/motion/easing';
+import { buttonClasses } from '@/components/ui/button';
+import { AppointmentCard } from './appointment-card';
+import { CartTotals } from './cart-totals';
+import { EmptyCard } from './empty-card';
+import { HoldBar } from './hold-bar';
+import { PromoCode } from './promo-code';
+import { useCartLines } from './cart-line';
+import { useDialogA11y } from './use-dialog-a11y';
 
 interface CartDrawerProps {
 	open: boolean;
 	onClose: () => void;
 }
 
+const OVERLAY_INITIAL = { opacity: 0 };
+const OVERLAY_ANIMATE = { opacity: 1 };
+const OVERLAY_TRANSITION: Transition = { duration: DURATION.fast };
+const PANEL_INITIAL = { x: '100%' };
+const PANEL_ANIMATE = { x: 0 };
+const PANEL_TRANSITION: Transition = SPRING_SOFT;
+const FADE_TRANSITION: Transition = { duration: 0.2 };
+const CARD_INITIAL = { opacity: 0, y: 24 };
+const CARD_ANIMATE = { opacity: 1, y: 0 };
+const CARD_EXIT = { opacity: 0, x: 40, transition: { duration: 0.3, ease: EASE_OUT } };
+
+/**
+ * "Your appointment cards" — the right-hand drawer. A stack of the mini
+ * appointment cards the composer printed, the hold countdown with Extend, a
+ * promo code and the running total.
+ */
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
-	const { cart, removeItem, updateAddOnQuantity, removeAddOnItem, timeRemaining, applyDiscountCode, removeDiscountCode, discountCodeError, clearDiscountCodeError } = useCart();
-	const { formatCustom } = useDateFormatter();
-	const [promoOpen, setPromoOpen] = useState(false);
-	const [promoCode, setPromoCode] = useState('');
-	const [promoLoading, setPromoLoading] = useState(false);
-	const promoInputRef = useRef<HTMLInputElement>(null);
+	const panelRef = useRef<HTMLDivElement>(null);
+	const titleId = useId();
+	const reduce = useReducedMotion();
+	const { cart, removeItem, updateAddOnQuantity, removeAddOnItem, timeRemaining, extendCart } = useCart();
+	const lines = useCartLines(cart);
 
-	const handleApplyCode = async () => {
-		if (!promoCode.trim()) return;
-		setPromoLoading(true);
-		try {
-			const ok = await applyDiscountCode(promoCode.trim());
-			if (ok) {
-				setPromoCode('');
-				setPromoOpen(false);
-			}
-		} finally {
-			setPromoLoading(false);
-		}
-	};
+	useDialogA11y(panelRef, open, onClose);
 
-	const handlePromoToggle = () => {
-		clearDiscountCodeError();
-		setPromoOpen((v) => !v);
-		if (!promoOpen) {
-			setTimeout(() => promoInputRef.current?.focus(), 0);
-		}
-	};
-
-	const items = cart?.items ?? [];
+	const count = lines.length;
 	const isExpired = timeRemaining !== null && timeRemaining <= 0;
-	const minutes = timeRemaining !== null ? Math.floor(timeRemaining / 60) : null;
-	const seconds = timeRemaining !== null ? timeRemaining % 60 : null;
 
 	return (
 		<AnimatePresence>
-			{open && (
-				<>
-					{/* Backdrop */}
+			{open ? (
+				<div className="fixed inset-0 z-[80]" key="cart-drawer">
 					<motion.div
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.2 }}
-						className="fixed inset-0 z-50 bg-charcoal/30 backdrop-blur-sm"
+						aria-hidden
+						className="absolute inset-0 bg-charcoal/40 backdrop-blur-[3px]"
+						initial={OVERLAY_INITIAL}
+						animate={OVERLAY_ANIMATE}
+						exit={OVERLAY_INITIAL}
+						transition={OVERLAY_TRANSITION}
 						onClick={onClose}
 					/>
 
-					{/* Drawer */}
 					<motion.div
-						initial={{ x: '100%' }}
-						animate={{ x: 0 }}
-						exit={{ x: '100%' }}
-						transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-						className="fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
+						ref={panelRef}
+						role="dialog"
+						aria-modal="true"
+						aria-labelledby={titleId}
+						tabIndex={-1}
+						initial={reduce ? OVERLAY_INITIAL : PANEL_INITIAL}
+						animate={reduce ? OVERLAY_ANIMATE : PANEL_ANIMATE}
+						exit={reduce ? OVERLAY_INITIAL : PANEL_INITIAL}
+						transition={reduce ? FADE_TRANSITION : PANEL_TRANSITION}
+						className="grain absolute inset-y-0 right-0 flex w-full max-w-[460px] flex-col bg-cream shadow-float outline-none"
 					>
-						{/* Header */}
-						<div className="flex items-center justify-between border-b border-charcoal/10 px-6 py-5">
-							<h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">
-								Your Cart ({items.length})
-							</h2>
+						{/* Masthead */}
+						<header className="relative z-[2] flex items-start justify-between gap-4 border-b border-line px-5 pt-6 pb-5 sm:px-7">
+							<div>
+								<p className="eyebrow text-warm-gray">
+									Your card <span className="tabular text-brass">· {String(count).padStart(2, '0')}</span>
+								</p>
+								<h2 id={titleId} className="display-sm mt-2 text-charcoal">
+									Your <em>appointments</em>
+								</h2>
+							</div>
 							<button
+								type="button"
 								onClick={onClose}
-								className="flex h-8 w-8 items-center justify-center text-warm-gray transition-colors hover:text-charcoal"
-								aria-label="Close cart"
+								aria-label="Close your appointment cards"
+								className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center text-charcoal transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
 							>
-								<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-									<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+								<svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.3} aria-hidden>
+									<path d="M2 2l12 12M14 2L2 14" />
 								</svg>
 							</button>
-						</div>
+						</header>
 
-						{/* Timer */}
-						{timeRemaining !== null && !isExpired && (
-							<div
-								className={`px-6 py-2 text-center text-xs ${
-									timeRemaining <= 60
-										? 'bg-red-50 text-red-700'
-										: timeRemaining <= 120
-											? 'bg-amber-50 text-amber-700'
-											: 'bg-cream/50 text-warm-gray'
-								}`}
-							>
-								Expires in{' '}
-								<span className="font-semibold">
-									{minutes}:{String(seconds).padStart(2, '0')}
-								</span>
+						{count > 0 && timeRemaining !== null ? (
+							<div className="relative z-[2] border-b border-line bg-paper/70 px-5 py-3.5 sm:px-7">
+								<HoldBar timeRemaining={timeRemaining} expiresAt={cart?.expiresAt} onExtend={extendCart} onNavigate={onClose} />
 							</div>
-						)}
+						) : null}
 
-						{isExpired && (
-							<div className="bg-amber-50 px-6 py-2 text-center text-xs text-amber-700">
-								Cart expired. Please book again.
-							</div>
-						)}
-
-						{/* Items */}
-						<div className="flex-1 overflow-y-auto px-6 py-4">
-							{items.length === 0 ? (
-								<div className="flex h-full flex-col items-center justify-center text-center">
-									<svg className="h-12 w-12 text-charcoal/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-										<path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-									</svg>
-									<p className="mt-4 text-sm text-warm-gray">Your cart is empty</p>
-									<Link
-										href="/services"
-										onClick={onClose}
-										className="mt-4 text-xs font-semibold uppercase tracking-[0.15em] text-accent hover:underline"
-									>
-										Browse Services
-									</Link>
-								</div>
+						{/* Cards */}
+						<div data-lenis-prevent className="relative z-[2] flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-7">
+							{count === 0 ? (
+								<EmptyCard onNavigate={onClose} />
 							) : (
-								<div className="divide-y divide-charcoal/5">
-									{items.map((item) => {
-										const addOnItems = item.addOnItems ?? [];
-										return (
-											<div key={item.id} className="py-4 first:pt-0 last:pb-0">
-												<div className="flex items-start justify-between gap-3">
-													<div className="flex-1">
-														<p className="text-sm font-medium text-charcoal">
-															{item.appointment?.product?.title ?? 'Service'}
-														</p>
-														{item.appointment?.from && (
-															<p className="mt-1 text-xs text-warm-gray">
-																{formatCustom(item.appointment.from, 'ddd, MMM D')}
-																{' at '}
-																{formatCustom(item.appointment.from, 'h:mm A')}
-															</p>
-														)}
-														{item.appointment?.product?.duration && (
-															<p className="mt-0.5 text-xs text-warm-gray">
-																{formatDuration(item.appointment.product.duration)}
-															</p>
-														)}
-													</div>
-													<div className="flex items-start gap-2">
-														<span className="text-sm font-semibold text-charcoal">
-															{formatPrice(item.originalUnitPrice ?? 0, cart?.paymentCurrencyCode)}
-														</span>
-														<button
-															onClick={() => removeItem(item.id)}
-															className="flex h-6 w-6 items-center justify-center text-warm-gray transition-colors hover:text-red-500"
-															aria-label="Remove item"
-														>
-															<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-																<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-															</svg>
-														</button>
-													</div>
-												</div>
-
-												{/* Nested add-on items */}
-												{addOnItems.length > 0 && (
-													<div className="mt-3 space-y-2 border-l-2 border-charcoal/10 pl-3">
-														{addOnItems.map((aoi) => {
-															const isDuration = aoi.addOn?.durationMultiplied ?? false;
-															const atMax =
-																!isDuration &&
-																aoi.addOn?.maxQuantity != null &&
-																aoi.quantity >= aoi.addOn.maxQuantity;
-															return (
-																<div key={aoi.id} className="flex items-center justify-between gap-2">
-																	<div className="min-w-0 flex-1">
-																		<p className="truncate text-xs font-medium text-charcoal">
-																			{aoi.addOn?.title ?? 'Add-on'}
-																		</p>
-																	</div>
-																	<div className="flex items-center gap-1">
-																		{!isDuration && (
-																			<>
-																				<button
-																					onClick={() => updateAddOnQuantity(aoi.id, aoi.quantity - 1)}
-																					className="flex h-6 w-6 items-center justify-center border border-charcoal/20 text-charcoal transition-colors hover:bg-cream"
-																					aria-label="Decrease add-on quantity"
-																				>
-																					<svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-																						<path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
-																					</svg>
-																				</button>
-																				<span className="w-5 text-center text-xs font-semibold text-charcoal">{aoi.quantity}</span>
-																				<button
-																					disabled={atMax}
-																					onClick={() => updateAddOnQuantity(aoi.id, aoi.quantity + 1)}
-																					className="flex h-6 w-6 items-center justify-center border border-charcoal/20 text-charcoal transition-colors hover:bg-cream disabled:opacity-30"
-																					aria-label="Increase add-on quantity"
-																				>
-																					<svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-																						<path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-																					</svg>
-																				</button>
-																			</>
-																		)}
-																		<span className="ml-1 whitespace-nowrap text-xs font-semibold text-charcoal">
-																			{formatPrice(aoi.discountedSubtotal, cart?.paymentCurrencyCode)}
-																		</span>
-																		<button
-																			onClick={() => removeAddOnItem(aoi.id)}
-																			className="flex h-6 w-6 items-center justify-center text-warm-gray transition-colors hover:text-red-500"
-																			aria-label="Remove add-on"
-																		>
-																			<svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-																				<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-																			</svg>
-																		</button>
-																	</div>
-																</div>
-															);
-														})}
-													</div>
-												)}
-											</div>
-										);
-									})}
-								</div>
+								<ul className="space-y-4">
+									<AnimatePresence initial={!reduce}>
+										{lines.map((line, i) => (
+											<motion.li
+												key={line.id}
+												layout={!reduce}
+												initial={reduce ? false : CARD_INITIAL}
+												animate={CARD_ANIMATE}
+												exit={reduce ? undefined : CARD_EXIT}
+												transition={{ duration: DURATION.base, ease: EASE_OUT, delay: 0.12 + i * 0.07 }}
+											>
+												<AppointmentCard
+													line={line}
+													index={i}
+													currency={cart?.paymentCurrencyCode}
+													editable
+													onRemove={removeItem}
+													onAddOnQuantity={updateAddOnQuantity}
+													onAddOnRemove={removeAddOnItem}
+													className="shadow-card"
+												/>
+											</motion.li>
+										))}
+									</AnimatePresence>
+								</ul>
 							)}
 						</div>
 
-						{/* Footer */}
-						{items.length > 0 && (
-							<div className="border-t border-charcoal/10 px-6 py-5">
-								{/* Applied discounts */}
-								{cart?.appliedDiscounts && cart.appliedDiscounts.length > 0 && (
-									<div className="mb-3 space-y-1">
-										{cart.appliedDiscounts.map((d) => (
-											<div key={d.id} className="flex items-center justify-between text-sm">
-												<div className="flex items-center gap-1 text-accent">
-													<span className="text-xs">{d.title}</span>
-													{d.code && (
-														<button
-															onClick={() => void removeDiscountCode()}
-															className="text-[10px] text-warm-gray underline hover:text-charcoal"
-														>
-															Remove
-														</button>
-													)}
-												</div>
-												<span className="text-sm font-medium text-accent">
-													-{formatPrice(d.totalAmount, cart?.paymentCurrencyCode)}
-												</span>
-											</div>
-										))}
-									</div>
+						{count > 0 && cart ? (
+							<footer className="relative z-[2] border-t border-line bg-paper px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-7">
+								<PromoCode />
+								<CartTotals cart={cart} className="mt-5" />
+								{isExpired ? (
+									<Link href="/services" onClick={onClose} className={buttonClasses({ variant: 'primary', size: 'lg', fullWidth: true, className: 'mt-5' })}>
+										Choose a new time
+									</Link>
+								) : (
+									<Link href="/checkout" onClick={onClose} className={buttonClasses({ variant: 'primary', size: 'lg', fullWidth: true, className: 'mt-5' })}>
+										Continue to checkout
+										<span aria-hidden className="transition-transform duration-500 group-hover/btn:translate-x-1">
+											→
+										</span>
+									</Link>
 								)}
-
-								{/* Promo code */}
-								{!cart?.appliedDiscountCode && (
-									<div className="mb-3">
-										<button
-											onClick={handlePromoToggle}
-											className="text-xs font-medium uppercase tracking-[0.1em] text-warm-gray hover:text-charcoal"
-										>
-											{promoOpen ? '− Hide code' : '+ Have a promo code?'}
-										</button>
-										{promoOpen && (
-											<div className="mt-2 flex gap-2">
-												<input
-													ref={promoInputRef}
-													type="text"
-													value={promoCode}
-													onChange={(e) => { setPromoCode(e.target.value); clearDiscountCodeError(); }}
-													onKeyDown={(e) => { if (e.key === 'Enter') void handleApplyCode(); }}
-													placeholder="Enter code"
-													className="flex-1 border border-charcoal/20 bg-white px-3 py-1.5 text-xs text-charcoal placeholder:text-warm-gray focus:border-charcoal focus:outline-none"
-												/>
-												<button
-													onClick={() => void handleApplyCode()}
-													disabled={promoLoading || !promoCode.trim()}
-													className="border border-charcoal/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] text-charcoal transition-colors hover:bg-cream disabled:opacity-50"
-												>
-													{promoLoading ? '...' : 'Apply'}
-												</button>
-											</div>
-										)}
-										{discountCodeError && (
-											<p className="mt-1 text-xs text-red-600">
-												{discountCodeError.message ?? 'This code is not valid.'}
-											</p>
-										)}
-									</div>
-								)}
-
-								<div className="mb-4 flex justify-between">
-									<span className="text-sm font-semibold text-charcoal">Total</span>
-									<span className="text-lg font-bold text-charcoal">
-										{formatPrice(cart?.total ?? cart?.subtotal ?? 0, cart?.paymentCurrencyCode)}
-									</span>
-								</div>
-								<Link
-									href="/checkout"
-									onClick={onClose}
-									className="flex w-full items-center justify-center gap-3 bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
-								>
-									Checkout
-									<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-										<path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-									</svg>
-								</Link>
 								<Link
 									href="/services"
 									onClick={onClose}
-									className="mt-3 flex w-full items-center justify-center border border-charcoal/10 px-8 py-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-charcoal transition-colors hover:bg-cream"
+									className="link-underline mx-auto mt-4 block w-fit text-xs text-warm-gray hover:text-charcoal"
 								>
-									Add More Services
+									Add another service from The Menu
 								</Link>
-							</div>
-						)}
+							</footer>
+						) : null}
 					</motion.div>
-				</>
-			)}
+				</div>
+			) : null}
 		</AnimatePresence>
 	);
 }

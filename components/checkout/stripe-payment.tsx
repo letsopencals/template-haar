@@ -1,11 +1,64 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { type Appearance, type StripeError, loadStripe } from '@stripe/stripe-js';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { type Appearance, type StripeElementsOptions, type StripeError, loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
+import { STRIPE_FORM_ID } from './form-ids';
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
+
+// HAAR palette, squared corners, Inter Tight — the Payment Element should read
+// as part of the page, not an embedded widget.
+const CHARCOAL = '#1a1a1a';
+const ACCENT = '#e8530e';
+const WARM_GRAY = '#8a8279';
+const LINE = 'rgba(26, 26, 26, 0.15)';
+
+const APPEARANCE: Appearance = {
+	theme: 'flat',
+	variables: {
+		colorPrimary: CHARCOAL,
+		colorBackground: '#ffffff',
+		colorText: CHARCOAL,
+		colorTextSecondary: WARM_GRAY,
+		colorTextPlaceholder: '#b5aea6',
+		colorDanger: '#b91c1c',
+		fontFamily: '"Inter Tight", system-ui, sans-serif',
+		fontSizeBase: '15px',
+		spacingUnit: '4px',
+		borderRadius: '0px',
+		focusBoxShadow: '0 0 0 4px rgba(232, 83, 14, 0.08)',
+		focusOutline: 'none',
+	},
+	rules: {
+		'.Input': {
+			border: `1px solid ${LINE}`,
+			padding: '14px 16px',
+			boxShadow: 'none',
+			transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+		},
+		'.Input:hover': { border: '1px solid rgba(26, 26, 26, 0.3)' },
+		'.Input:focus': { border: `1px solid ${CHARCOAL}`, boxShadow: '0 0 0 4px rgba(232, 83, 14, 0.08)' },
+		'.Label': {
+			color: WARM_GRAY,
+			fontSize: '10px',
+			fontWeight: '600',
+			textTransform: 'uppercase',
+			letterSpacing: '0.22em',
+			marginBottom: '10px',
+		},
+		'.Tab': { border: `1px solid ${LINE}`, backgroundColor: '#ffffff', color: WARM_GRAY, boxShadow: 'none' },
+		'.Tab:hover': { color: CHARCOAL, border: '1px solid rgba(26, 26, 26, 0.3)' },
+		'.Tab--selected': { border: `1px solid ${CHARCOAL}`, color: CHARCOAL, boxShadow: `inset 0 -2px 0 ${ACCENT}` },
+		'.TabIcon--selected': { fill: ACCENT },
+		'.Error': { fontSize: '12px' },
+	},
+};
+
+const FONTS: StripeElementsOptions['fonts'] = [
+	{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&display=swap' },
+];
 
 interface StripePaymentProps {
 	clientSecret: string;
@@ -13,78 +66,50 @@ interface StripePaymentProps {
 	onSuccess: (paymentIntentId: string) => void;
 	onError: (message: string) => void;
 	disabled?: boolean;
+	/** Total shown on the pay button. */
+	payLabel?: string;
+	/** Lets the page's mobile pay bar mirror the processing state. */
+	onProcessingChange?: (processing: boolean) => void;
 }
 
-export function StripePayment({ clientSecret, stripeAccountId, onSuccess, onError, disabled }: StripePaymentProps) {
+export function StripePayment({
+	clientSecret,
+	stripeAccountId,
+	onSuccess,
+	onError,
+	disabled,
+	payLabel,
+	onProcessingChange,
+}: StripePaymentProps) {
 	const stripePromise = useMemo(() => {
 		if (!publishableKey) return null;
-		return loadStripe(publishableKey, {
-			stripeAccount: stripeAccountId ?? undefined,
-		});
+		return loadStripe(publishableKey, { stripeAccount: stripeAccountId ?? undefined });
 	}, [stripeAccountId]);
 
-	const appearance = useMemo((): Appearance => ({
-		theme: 'flat',
-		variables: {
-			colorPrimary: '#2c2c2c',
-			colorBackground: '#ffffff',
-			colorText: '#2c2c2c',
-			colorDanger: '#dc2626',
-			fontFamily: 'system-ui, -apple-system, sans-serif',
-			spacingUnit: '4px',
-			borderRadius: '0px',
-		},
-		rules: {
-			'.Input': {
-				border: '1px solid rgba(44, 44, 44, 0.1)',
-				padding: '12px 16px',
-				fontSize: '14px',
-				transition: 'border-color 0.2s ease',
-			},
-			'.Input:focus': {
-				border: '1px solid #2c2c2c',
-				boxShadow: 'none',
-			},
-			'.Label': {
-				color: '#8a8a8a',
-				fontSize: '11px',
-				fontWeight: '500',
-				textTransform: 'uppercase',
-				letterSpacing: '0.05em',
-			},
-			'.Tab': {
-				border: '1px solid rgba(44, 44, 44, 0.1)',
-				color: '#8a8a8a',
-			},
-			'.Tab:hover': {
-				color: '#2c2c2c',
-			},
-			'.Tab--selected': {
-				border: '1px solid #2c2c2c',
-				color: '#2c2c2c',
-			},
-		},
-	}), []);
-
-	const options = useMemo(() => ({ clientSecret, appearance }), [clientSecret, appearance]);
+	const options = useMemo<StripeElementsOptions>(() => ({ clientSecret, appearance: APPEARANCE, fonts: FONTS }), [clientSecret]);
 
 	if (!publishableKey) {
 		return (
-			<div className="border border-red-200 bg-red-50 p-6">
+			<div className="border border-red-200 bg-red-50 p-5" role="alert">
 				<p className="text-sm text-red-700">
-					Stripe is not configured. Set <code className="rounded bg-red-100 px-1 py-0.5 text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in your environment.
+					Card payments aren&rsquo;t configured. Set{' '}
+					<code className="bg-red-100 px-1 py-0.5 text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in your environment.
 				</p>
 			</div>
 		);
 	}
 
-	if (!stripePromise) {
-		return null;
-	}
+	if (!stripePromise) return null;
 
 	return (
 		<Elements stripe={stripePromise} options={options}>
-			<StripePaymentForm onSuccess={onSuccess} onError={onError} disabled={disabled} />
+			<StripePaymentForm
+				onSuccess={onSuccess}
+				onError={onError}
+				disabled={disabled}
+				payLabel={payLabel}
+				onProcessingChange={onProcessingChange}
+			/>
 		</Elements>
 	);
 }
@@ -93,31 +118,27 @@ function StripePaymentForm({
 	onSuccess,
 	onError,
 	disabled,
-}: {
-	onSuccess: (paymentIntentId: string) => void;
-	onError: (message: string) => void;
-	disabled?: boolean;
-}) {
+	payLabel,
+	onProcessingChange,
+}: Omit<StripePaymentProps, 'clientSecret' | 'stripeAccountId'>) {
 	const stripe = useStripe();
 	const elements = useElements();
 	const [processing, setProcessing] = useState(false);
 
-	const handlePay = async () => {
-		if (!stripe || !elements || processing) return;
+	useEffect(() => {
+		onProcessingChange?.(processing);
+	}, [processing, onProcessingChange]);
 
+	const handlePay = async (e: FormEvent) => {
+		e.preventDefault();
+		if (!stripe || !elements || processing || disabled) return;
 		setProcessing(true);
-
 		try {
-			const { error, paymentIntent } = await stripe.confirmPayment({
-				elements,
-				redirect: 'if_required',
-			});
-
+			const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
 			if (error) {
 				onError((error as StripeError).message ?? 'Payment failed');
 				return;
 			}
-
 			if (paymentIntent?.id) {
 				onSuccess(paymentIntent.id);
 			} else {
@@ -131,42 +152,25 @@ function StripePaymentForm({
 	};
 
 	return (
-		<div className="border border-charcoal/10 p-6">
-			<h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-charcoal">
-				Card Payment
-			</h3>
-			<div className="mt-5">
-				<PaymentElement
-					options={{
-						layout: 'tabs',
-					}}
-				/>
-			</div>
+		<form id={STRIPE_FORM_ID} onSubmit={handlePay} aria-busy={processing}>
+			<PaymentElement options={{ layout: 'tabs' }} />
 			<Button
+				type="submit"
 				variant="primary"
 				size="lg"
 				fullWidth
-				className="mt-6"
-				onClick={handlePay}
+				className="mt-7 max-lg:hidden"
 				disabled={!stripe || !elements || processing || disabled}
 			>
-				{processing ? (
-					<>
-						<svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-							<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-							<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-						</svg>
-						Processing Payment...
-					</>
-				) : (
-					<>
-						Pay &amp; Confirm
-						<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-							<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-						</svg>
-					</>
-				)}
+				{processing ? 'Processing payment…' : payLabel ? `Pay ${payLabel}` : 'Pay & confirm'}
 			</Button>
-		</div>
+			<p className="mt-4 flex items-center gap-2 text-xs text-warm-gray">
+				<svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.3} aria-hidden>
+					<rect x="3" y="7" width="10" height="7" />
+					<path d="M5 7V5a3 3 0 016 0v2" />
+				</svg>
+				Payments are encrypted and processed by Stripe. We never see your card number.
+			</p>
+		</form>
 	);
 }

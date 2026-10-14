@@ -16,6 +16,8 @@ interface CartContextValue {
 	cart: CartWithDiscounts | null;
 	cartId: string | null;
 	loading: boolean;
+	/** True once the stored cart id has been read from localStorage (client mount). Gate "no cart" redirects on it. */
+	isLoaded: boolean;
 	/** Time remaining in seconds (null if no expiration) */
 	timeRemaining: number | null;
 	/** Fetch or create cart */
@@ -58,6 +60,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 	const [cart, setCartState] = useState<CartWithDiscounts | null>(null);
 	const [cartId, setCartId] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [isLoaded, setIsLoaded] = useState(false);
 	const timeRemaining = useCartExpiry(cart?.expiresAt);
 	const [discountCodeError, setDiscountCodeError] = useState<DiscountCodeError | null>(null);
 
@@ -67,6 +70,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 		if (stored) {
 			setCartId(stored);
 		}
+		setIsLoaded(true);
 	}, []);
 
 	// Fetch cart when cartId changes
@@ -218,6 +222,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 			cart,
 			cartId,
 			loading,
+			isLoaded,
 			timeRemaining,
 			refreshCart,
 			setCart,
@@ -235,6 +240,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 			cart,
 			cartId,
 			loading,
+			isLoaded,
 			timeRemaining,
 			refreshCart,
 			setCart,

@@ -1,134 +1,349 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import 'tailwindcss';
 
+/*
+ * HAAR — "Editorial Atelier". See DESIGN.md for the full contract.
+ * Plain Tailwind color names (charcoal, cream, accent, warm-gray, brass), not
+ * CSS-var semantic tokens like the other templates.
+ */
 @theme {
-	/* Editorial color palette inspired by the design */
-	--color-accent: #E8530E;
-	--color-accent-light: #FF6B2C;
-	--color-accent-dark: #C44409;
-	--color-cream: #F5F0EB;
-	--color-cream-dark: #E8E0D8;
-	--color-charcoal: #1A1A1A;
-	--color-charcoal-light: #2A2A2A;
-	--color-warm-gray: #8A8279;
-	--color-warm-gray-light: #B5AEA6;
+	/* Palette — cream paper, charcoal ink, burnt-orange accent, brass hairlines */
+	--color-accent: #e8530e;
+	--color-accent-light: #ff6b2c;
+	--color-accent-dark: #c44409;
+	--color-cream: #f5f0eb;
+	--color-cream-dark: #e8e0d8;
+	--color-paper: #faf7f3;
+	--color-charcoal: #1a1a1a;
+	--color-charcoal-light: #2a2a2a;
+	--color-warm-gray: #8a8279;
+	--color-warm-gray-light: #b5aea6;
+	--color-brass: #a8875a;
+	--color-brass-light: #c9ad83;
+	--color-line: rgba(26, 26, 26, 0.12);
+	--color-line-strong: rgba(26, 26, 26, 0.24);
 
-	/* Typography scale */
-	--font-display: 'Playfair Display', Georgia, serif;
-	--font-body: 'Inter', system-ui, sans-serif;
+	/* Type — next/font sets the variables on <html> (app/layout.tsx) */
+	--font-display: var(--font-bodoni), 'Bodoni Moda', Didot, Georgia, serif;
+	--font-body: var(--font-inter-tight), 'Inter Tight', system-ui, sans-serif;
+	--font-sans: var(--font-inter-tight), 'Inter Tight', system-ui, sans-serif;
+	--font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-	/* Animations */
-	--animate-fade-up: fade-up 0.8s ease both;
+	/* Motion */
+	--ease-atelier: cubic-bezier(0.22, 1, 0.36, 1);
+	--ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+	--animate-fade-up: fade-up 0.8s var(--ease-atelier) both;
 	--animate-fade-in: fade-in 0.8s ease both;
-	--animate-marquee: marquee 25s linear infinite;
+	--animate-marquee: marquee 40s linear infinite;
+	--animate-ink: ink 0.9s var(--ease-atelier) both;
+	--animate-spin-slow: spin 24s linear infinite;
+
+	/* Elevation */
+	--shadow-card: 0 1px 0 rgba(26, 26, 26, 0.04), 0 24px 60px -24px rgba(26, 26, 26, 0.28);
+	--shadow-float: 0 30px 80px -30px rgba(26, 26, 26, 0.45);
 
 	/* Spacing */
 	--spacing-section: 8rem;
 	--spacing-section-sm: 5rem;
 }
 
-/* Base styles */
+/* ------------------------------------------------------------------ Base */
+
 html {
-	scroll-behavior: smooth;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+}
+
+/* Lenis owns smooth scrolling; native smooth-scroll only without it. */
+html:not(.lenis) {
+	scroll-behavior: smooth;
+}
+html.lenis,
+html.lenis body {
+	height: auto;
+}
+.lenis.lenis-stopped {
+	overflow: clip;
 }
 
 body {
 	font-family: var(--font-body);
 	color: var(--color-charcoal);
-	background-color: #ffffff;
+	background-color: var(--color-paper);
 }
 
-/* Selection color */
 ::selection {
 	background-color: var(--color-accent);
 	color: #ffffff;
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
 	width: 8px;
 }
-
 ::-webkit-scrollbar-track {
 	background: var(--color-cream);
 }
-
 ::-webkit-scrollbar-thumb {
-	background: var(--color-warm-gray);
-	border-radius: 4px;
+	background: var(--color-warm-gray-light);
 }
-
 ::-webkit-scrollbar-thumb:hover {
 	background: var(--color-charcoal);
 }
 
-/* Display heading utility */
+.no-scrollbar {
+	scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
+/*
+ * Component classes live in a layer so Tailwind utilities can override them
+ * (`eyebrow text-[0.6rem]`, `link-underline hidden md:inline-block`).
+ */
+@layer components {
+/* ------------------------------------------------------------------ Type */
+
+.font-display {
+	font-family: var(--font-display);
+	font-optical-sizing: auto;
+}
+
+/* Display scale (DESIGN.md §2). Mix roman + <em> italics in one headline. */
+.display-xl,
+.display-lg,
+.display-md,
+.display-sm {
+	font-family: var(--font-display);
+	font-optical-sizing: auto;
+	font-weight: 400;
+	letter-spacing: -0.035em;
+	line-height: 0.92;
+}
+.display-xl {
+	font-size: clamp(3.5rem, 11vw, 11.5rem);
+	line-height: 0.86;
+}
+.display-lg {
+	font-size: clamp(2.75rem, 7vw, 7rem);
+}
+.display-md {
+	font-size: clamp(2.25rem, 4.6vw, 4.5rem);
+	line-height: 0.98;
+}
+.display-sm {
+	font-size: clamp(1.75rem, 2.8vw, 2.75rem);
+	line-height: 1.05;
+	letter-spacing: -0.02em;
+}
+.display-xl em,
+.display-lg em,
+.display-md em,
+.display-sm em,
+.italic-display {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-weight: 400;
+	letter-spacing: -0.02em;
+}
+
+/* Legacy utilities kept for any untouched markup */
 .heading-display {
 	font-family: var(--font-display);
-	font-weight: 700;
+	font-weight: 500;
+	line-height: 0.95;
+	letter-spacing: -0.03em;
+}
+.heading-display-italic {
+	font-family: var(--font-display);
+	font-style: italic;
+	font-weight: 400;
 	line-height: 0.95;
 	letter-spacing: -0.02em;
 }
 
-.heading-display-italic {
-	font-family: var(--font-display);
-	font-style: italic;
-	font-weight: 500;
-	line-height: 0.95;
+/* Small caps label above headings: "Nº 02 — The Menu" */
+.eyebrow {
+	font-family: var(--font-body);
+	font-size: 0.6875rem;
+	font-weight: 600;
+	letter-spacing: 0.28em;
+	text-transform: uppercase;
+}
+
+/* Prices, times, plate numbers */
+.tabular {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums lining-nums;
 	letter-spacing: -0.01em;
 }
 
-/* Smooth image placeholder */
-.image-placeholder {
-	background: linear-gradient(135deg, var(--color-cream-dark) 0%, var(--color-warm-gray-light) 100%);
+/* Editorial body copy with a drop cap (About long-read) */
+.drop-cap::first-letter {
+	float: left;
+	font-family: var(--font-display);
+	font-size: 5.25em;
+	line-height: 0.8;
+	padding: 0.06em 0.12em 0 0;
+	color: var(--color-accent);
 }
 
-/* Horizontal rule accent */
+/* ----------------------------------------------------------------- Shape */
+
+/* The arch — HAAR's signature, taken from the salon's arched mirror. Images only. */
+.arch {
+	/* Over-sized radii are scaled down uniformly by the browser → a true semicircle top at any width */
+	border-radius: 9999px 9999px 0 0;
+	overflow: hidden;
+}
+.arch-sm {
+	border-radius: 999px 999px 0.25rem 0.25rem;
+	overflow: hidden;
+}
+/* Arch hairline frame offset behind an arch image */
+.arch-frame {
+	border: 1px solid var(--color-brass);
+	border-radius: 999px 999px 0 0;
+}
+
+/* Container + section rhythm */
+.container-x {
+	margin-inline: auto;
+	width: 100%;
+	max-width: 1440px;
+	padding-inline: 1.25rem;
+}
+@media (min-width: 48rem) {
+	.container-x {
+		padding-inline: 2.5rem;
+	}
+}
+.section-y {
+	padding-block: 6rem;
+}
+@media (min-width: 48rem) {
+	.section-y {
+		padding-block: 9rem;
+	}
+}
+
+.hairline {
+	height: 1px;
+	border: none;
+	background: var(--color-line);
+}
 .hr-accent {
-	height: 3px;
+	height: 2px;
 	background-color: var(--color-accent);
 	border: none;
 }
 
-/* Link hover animation */
+/* Dotted leader: "Balayage ........ $220" */
+.leader-line {
+	flex: 1;
+	min-width: 1rem;
+	margin: 0 0.75rem;
+	border-bottom: 1px dotted var(--color-line-strong);
+	transform: translateY(-0.3em);
+}
+
+/* Perforated ticket edge (appointment card) */
+.perforation {
+	height: 1px;
+	background-image: linear-gradient(90deg, var(--color-line-strong) 50%, transparent 50%);
+	background-size: 10px 1px;
+}
+
+/* ------------------------------------------------------------- Surfaces */
+
+.glass {
+	background-color: rgba(250, 247, 243, 0.72);
+	-webkit-backdrop-filter: blur(20px) saturate(1.4);
+	backdrop-filter: blur(20px) saturate(1.4);
+}
+.glass-dark {
+	background-color: rgba(26, 26, 26, 0.55);
+	-webkit-backdrop-filter: blur(20px);
+	backdrop-filter: blur(20px);
+}
+
+.scrim-bottom {
+	background: linear-gradient(0deg, rgba(26, 26, 26, 0.6) 0%, rgba(26, 26, 26, 0) 100%);
+}
+
+/* Missing-image fallback: soft plaster gradient, never a broken box */
+.image-placeholder {
+	background-color: var(--color-cream-dark);
+	background-image:
+		radial-gradient(70% 60% at 50% 30%, rgba(250, 247, 243, 0.65) 0%, rgba(250, 247, 243, 0) 60%),
+		linear-gradient(180deg, var(--color-cream) 0%, var(--color-cream-dark) 100%);
+}
+
+/* Film grain. Needs a positioned parent. `.noise-overlay` kept as an alias. */
+.grain,
+.noise-overlay {
+	position: relative;
+	isolation: isolate;
+}
+.grain::after,
+.noise-overlay::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	opacity: 0.05;
+	mix-blend-mode: multiply;
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.bg-charcoal.grain::after,
+.bg-charcoal.noise-overlay::before {
+	mix-blend-mode: screen;
+	opacity: 0.06;
+}
+
+/* ---------------------------------------------------------------- Links */
+
 .link-underline {
 	position: relative;
 	display: inline-block;
 }
-
 .link-underline::after {
 	content: '';
 	position: absolute;
 	bottom: -2px;
 	left: 0;
-	width: 0;
-	height: 1.5px;
-	background-color: currentColor;
-	transition: width 0.3s ease;
-}
-
-.link-underline:hover::after {
 	width: 100%;
+	height: 1px;
+	background-color: currentColor;
+	transform: scaleX(0);
+	transform-origin: right;
+	transition: transform 0.5s var(--ease-expo);
+}
+.link-underline:hover::after,
+.link-underline:focus-visible::after {
+	transform: scaleX(1);
+	transform-origin: left;
+}
 }
 
-/* Noise texture overlay for dark sections */
-.noise-overlay {
-	position: relative;
+/* -------------------------------------------------------- Intro curtain */
+
+/* Hidden before paint for returning visitors (IntroScript) */
+html[data-intro-seen] [data-intro] {
+	display: none;
+}
+/* First visit: the intro is the reveal, so skip the page-transition curtain */
+html:not([data-intro-seen]):has([data-intro]) [data-page-curtain] {
+	display: none;
+}
+html:not([data-intro-seen]):has([data-intro]) [data-page-transition] {
+	transform: none !important;
+	opacity: 1 !important;
 }
 
-.noise-overlay::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	opacity: 0.03;
-	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-	pointer-events: none;
-	z-index: 1;
-}
+/* ------------------------------------------------------------ Keyframes */
 
-/* Keyframes for CSS animations */
 @keyframes fade-up {
 	from {
 		opacity: 0;
@@ -139,7 +354,6 @@ body {
 		transform: translateY(0);
 	}
 }
-
 @keyframes fade-in {
 	from {
 		opacity: 0;
@@ -148,12 +362,41 @@ body {
 		opacity: 1;
 	}
 }
-
 @keyframes marquee {
 	from {
 		transform: translateX(0);
 	}
 	to {
 		transform: translateX(-50%);
+	}
+}
+/* "Ink write": a field on the appointment card being filled in */
+@keyframes ink {
+	from {
+		opacity: 0;
+		clip-path: inset(0 100% 0 0);
+		filter: blur(2px);
+	}
+	to {
+		opacity: 1;
+		clip-path: inset(0 0 0 0);
+		filter: blur(0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.001ms !important;
+		scroll-behavior: auto !important;
+	}
+	.animate-marquee {
+		animation: none !important;
+	}
+	[data-intro] {
+		display: none;
 	}
 }

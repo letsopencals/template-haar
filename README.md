@@ -36,27 +36,38 @@ That's it. Once deployed, you'll have the same fully functional booking site as 
 
 ## What's Included
 
-![Booking Flow](docs/booking-page.png)
+![HAAR home page — the "Issue Nº 17" masthead with "The Art of Hair" and the arched hero photo](docs/homepage-hero.png)
 
-### Online Booking
-Browse services, select staff and location, pick a time slot, and check out — all in a smooth, animated flow.
+### Editorial Atelier design
+A magazine-style salon site: Bodoni Moda headlines, numbered sections, plate captions and arch-masked photography taken from the salon's arched mirror. Motion (line-masked reveals, arch wipes, a pinned "Ritual" sequence, Lenis smooth scroll) lives in `components/motion/` and switches off under `prefers-reduced-motion`.
 
-### Service Variants
-Products can have multiple variants (e.g. "Haircut" with "Standard" and "Premium" options), each with their own pricing, duration, and assigned staff.
+![Booking composer — day ribbon, time slots with free-stylist avatars, and the live appointment card](docs/booking-page.png)
 
-### Multi-Location Support
-Global location selector in the header, staff filtered by location, and per-location availability.
+### Consultation-card booking
+One page instead of a wizard. Numbered sections (service, stylist, day & time, finishing touches) unlock in order, while a live appointment card writes itself in on the right. In "Any stylist" mode each time slot shows who is free, and you pick your stylist right there. Reserving flips the card to "Held for you" with the hold countdown. Closed days are greyed out, and `?date=&staff=&location=` deep links pre-fill the composer.
 
-![Checkout](docs/checkout-page.png)
+### Service variants and multiple locations
+Variants show as "Hair length" choices (Short / Medium / Long), each with its own price, duration and staff. The location selector filters the menu, the stylists and the availability.
 
-### Checkout with Stripe
-Multi-step checkout with customer info, custom questions, and secure payment via Stripe Elements.
+![Checkout — numbered sections with "Pay at the salon" selected, and the appointment card stack](docs/checkout-page.png)
 
-### Customer Accounts
-Sign in, view upcoming appointments, browse order history, manage profile settings, and reschedule or cancel appointments.
+### Checkout
+Your details → a few questions → payment, next to a stack of appointment cards with discounts, tax and a hold timer you can extend. Supports Stripe (card, Apple Pay, Google Pay), pay at the salon, bank transfer and free bookings.
 
-### Mobile-First Design
-Fully responsive with animated mobile menu and touch-friendly booking UI.
+![Confirmation — the stamped appointment card with add-to-calendar and "Before your visit" notes](docs/confirmed.png)
+
+### Confirmation
+The card comes back stamped "Confirmed", with add-to-calendar (`.ics` + Google Calendar), directions and a "Before your visit" checklist.
+
+![Customer account — "Your salon diary" with the next-visit hero](docs/account.png)
+
+### Customer accounts with passwordless sign-in
+Sign in with a 6-digit email code or a password; links from booking emails sign the customer straight in. "Your salon diary" shows the next visit with a countdown, past and upcoming appointments, orders as receipts, and reschedule / cancel where the store allows it.
+
+![On mobile — home, the day & time picker with the appointment-card bar, and the held card](docs/mobile.png)
+
+### Mobile-first
+On phones the appointment card becomes a sticky "Your card · $80" bar that opens as a sheet, and checkout gets a sticky pay bar.
 
 ### SEO Ready
 Per-page metadata, Open Graph/Twitter cards, JSON-LD structured data, robots.txt, and sitemap.xml — all configured out of the box.

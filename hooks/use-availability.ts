@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import type { CurrentAvailabilitySlot, ProductListVariant } from '@opencals/storefront-sdk';
 import { fetcher } from '@/lib/fetcher';
@@ -10,6 +10,8 @@ interface UseAvailabilityOptions {
 	timezone: string;
 	staffMemberId: string | null;
 	locationId: string | null;
+	/** Pre-selected day (YYYY-MM-DD), e.g. from a `?date=` deep link. */
+	initialDate?: string | null;
 }
 
 interface UseAvailabilityResult {
@@ -17,15 +19,17 @@ interface UseAvailabilityResult {
 	setSelectedDate: (date: string | null) => void;
 	slots: CurrentAvailabilitySlot[];
 	slotsLoading: boolean;
+	/** Days with at least one open start over the whole horizon; null while loading. */
+	availableDates: Set<string> | null;
 	selectedSlot: CurrentAvailabilitySlot | null;
 	selectSlot: (slot: CurrentAvailabilitySlot) => void;
 	resetSlot: () => void;
 }
 
 export function useAvailability(options: UseAvailabilityOptions): UseAvailabilityResult {
-	const { activeVariant, timezone, staffMemberId, locationId } = options;
+	const { activeVariant, timezone, staffMemberId, locationId, initialDate = null } = options;
 
-	const [selectedDate, setSelectedDate] = useState<string | null>(null);
+	const [selectedDate, setSelectedDate] = useState<string | null>(initialDate);
 	const [selectedSlot, setSelectedSlot] = useState<CurrentAvailabilitySlot | null>(null);
 
 	// SWR handles request dedup + cancellation of stale responses; the key is
@@ -47,6 +51,24 @@ export function useAvailability(options: UseAvailabilityOptions): UseAvailabilit
 
 	const slots = Array.isArray(data) ? data : [];
 
+	// One merged-ranges call per variant/location/teacher marks every open day
+	// in the strip up front, instead of probing day by day.
+	const rangesKey = activeVariant
+		? (() => {
+				const params = new URLSearchParams({ timezone });
+				if (staffMemberId) params.set('staffMemberId', staffMemberId);
+				if (locationId) params.set('locationId', locationId);
+				return `/api/products/${activeVariant.slug}/availability-ranges?${params}`;
+			})()
+		: null;
+	const { data: rangesData } = useSWR<{ dates: string[] }>(rangesKey, fetcher, {
+		revalidateOnFocus: false,
+	});
+	const availableDates = useMemo(
+		() => (rangesData?.dates ? new Set(rangesData.dates) : null),
+		[rangesData],
+	);
+
 	const selectSlot = useCallback((slot: CurrentAvailabilitySlot) => {
 		setSelectedSlot(slot);
 	}, []);
@@ -65,6 +87,7 @@ export function useAvailability(options: UseAvailabilityOptions): UseAvailabilit
 		setSelectedDate: handleSetDate,
 		slots,
 		slotsLoading: !!key && isLoading,
+		availableDates,
 		selectedSlot,
 		selectSlot,
 		resetSlot,

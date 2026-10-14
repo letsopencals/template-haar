@@ -16,12 +16,14 @@ export async function GET(request: NextRequest) {
 	const staffMemberId = searchParams.get('staffMemberId') ?? undefined;
 	const locationId = searchParams.get('locationId') ?? undefined;
 	const excludeAppointmentId = searchParams.get('excludeAppointmentId') ?? undefined;
+	// Only meaningful for products with `allowCustomDuration` (seconds, as a string).
+	const duration = searchParams.get('duration') ?? undefined;
 
 	if (!productId || !date) {
 		return NextResponse.json({ error: 'productId and date are required' }, { status: 400 });
 	}
 
-	const query: AvailabilityQuery = { date, timezone, staffMemberId, locationId, excludeAppointmentId };
+	const query: AvailabilityQuery = { date, timezone, staffMemberId, locationId, excludeAppointmentId, duration };
 
 	try {
 		const { data } = await ProductService.getCurrentAvailabilities({

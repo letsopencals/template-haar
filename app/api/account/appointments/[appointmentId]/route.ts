@@ -3,6 +3,7 @@ import { AppointmentService } from '@opencals/storefront-sdk';
 import { requireAuth } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api-error-handler';
+import { publicPayload } from '@/lib/public-payload';
 
 export async function GET(
 	_request: NextRequest,
@@ -14,7 +15,7 @@ export async function GET(
 
 	try {
 		const { data } = await AppointmentService.find({ path: { appointmentId }, headers: auth.headers, throwOnError: true });
-		return NextResponse.json(data);
+		return NextResponse.json(publicPayload(data));
 	} catch (err) {
 		return handleApiError(err);
 	}

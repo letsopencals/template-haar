@@ -19,6 +19,8 @@ interface UseProductDataResult {
 export function useProductData(
 	slug: string,
 	initialProduct: ProductListItemResponse | null = null,
+	/** Variant to select by default (e.g. the variant slug in the URL); falls back to the first variant. */
+	preferredVariantSlug?: string | null,
 ): UseProductDataResult {
 	// SWR dedupes/caches the fetch and is seeded with the server-rendered product
 	// so there's no loading flash on first paint.
@@ -34,7 +36,8 @@ export function useProductData(
 
 	// Default the selected variant to the first one, but let the caller override.
 	const [overrideVariantId, setSelectedVariantId] = useState<string | null>(null);
-	const selectedVariantId = overrideVariantId ?? variants[0]?.id ?? null;
+	const preferredId = preferredVariantSlug ? variants.find((v) => v.slug === preferredVariantSlug)?.id : undefined;
+	const selectedVariantId = overrideVariantId ?? preferredId ?? variants[0]?.id ?? null;
 
 	const activeVariant: ProductListVariant | null = hasVariants
 		? variants.find((v) => v.id === selectedVariantId) || variants[0] || null

@@ -1,232 +1,161 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname } from 'next/navigation';
+import { motion, useMotionValueEvent, useScroll, type Transition } from 'framer-motion';
+import { clsx } from 'clsx';
 import { useSession, signOut } from 'next-auth/react';
 import { useCart } from '@/contexts/cart-context';
 import { CartDrawer } from '@/components/cart/cart-drawer';
+import { buttonClasses } from '@/components/ui/button';
+import { DURATION, EASE_EXPO } from '@/components/motion/easing';
+import { MenuOverlay } from '@/components/layout/menu-overlay';
+import { CartPill } from '@/components/layout/cart-pill';
+import { BAR_LINKS } from '@/components/layout/nav-links';
 import { siteConfig } from '@/lib/site-config';
 
-const navLinks = [
-	{ href: '/', label: 'Home' },
-	{ href: '/services', label: 'Services' },
-	{ href: '/about', label: 'About' },
-	{ href: '/contact', label: 'Contact' },
-];
+const BAR_SHOWN = { y: '0%' } as const;
+const BAR_HIDDEN = { y: '-100%' } as const;
+const BAR_TRANSITION: Transition = { duration: DURATION.base, ease: EASE_EXPO };
 
+/**
+ * Thin masthead that condenses into a compact glass bar once the page scrolls,
+ * hides on scroll down and returns on scroll up. "Menu" opens the full-screen
+ * contents overlay; "Your card (n)" opens the existing cart drawer.
+ */
 export function Header() {
 	const { data: session, status } = useSession();
 	const { cart } = useCart();
-	const [isScrolled, setIsScrolled] = useState(false);
-	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-	const [isCartOpen, setIsCartOpen] = useState(false);
+	const pathname = usePathname();
+	const { scrollY } = useScroll();
+	const [compact, setCompact] = useState(false);
+	const [hidden, setHidden] = useState(false);
+	const [menuOpen, setMenuOpen] = useState(false);
+	const [cartOpen, setCartOpen] = useState(false);
+	const toggleRef = useRef<HTMLButtonElement>(null);
 
-	const cartItemCount = cart?.items?.length ?? 0;
+	const cardCount = cart?.items?.length ?? 0;
+	const authenticated = status === 'authenticated';
+	const firstName = session?.customer?.firstName ?? null;
 
-	useEffect(() => {
-		const handleScroll = () => setIsScrolled(window.scrollY > 50);
-		window.addEventListener('scroll', handleScroll, { passive: true });
-		return () => window.removeEventListener('scroll', handleScroll);
+	useMotionValueEvent(scrollY, 'change', (y) => {
+		const prev = scrollY.getPrevious() ?? 0;
+		setCompact(y > 40);
+		if (menuOpen || cartOpen) return;
+		if (y > 240 && y > prev + 4) setHidden(true);
+		else if (y < prev - 4 || y <= 240) setHidden(false);
+	});
+
+	const closeMenu = useCallback(() => setMenuOpen(false), []);
+	const openCart = useCallback(() => {
+		setMenuOpen(false);
+		setCartOpen(true);
 	}, []);
-
-	useEffect(() => {
-		if (isMobileMenuOpen) {
-			document.body.style.overflow = 'hidden';
-		} else {
-			document.body.style.overflow = '';
-		}
-		return () => { document.body.style.overflow = ''; };
-	}, [isMobileMenuOpen]);
+	const closeCart = useCallback(() => setCartOpen(false), []);
+	const handleSignOut = useCallback(() => {
+		setMenuOpen(false);
+		void signOut();
+	}, []);
 
 	return (
 		<>
-			<header
-				className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-					isScrolled
-						? 'bg-white/95 backdrop-blur-md shadow-sm'
-						: 'bg-transparent'
-				}`}
+			<motion.header
+				className="fixed inset-x-0 top-0 z-50"
+				initial={false}
+				animate={hidden ? BAR_HIDDEN : BAR_SHOWN}
+				transition={BAR_TRANSITION}
 			>
-				<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
-					<div className="flex h-20 items-center justify-between">
-						{/* Logo */}
-						<Link href="/" className="relative z-10">
-							<span className="font-display text-2xl font-bold tracking-tight text-charcoal">
-								{siteConfig.logo.text}<span className="text-accent">{siteConfig.logo.accent}</span>
-							</span>
-						</Link>
-
-						{/* Desktop Nav */}
-						<nav className="hidden items-center gap-10 md:flex">
-							{navLinks.map((link) => (
-								<Link
-									key={link.href}
-									href={link.href}
-									className="link-underline text-sm font-medium uppercase tracking-widest text-charcoal/80 transition-colors hover:text-charcoal"
-								>
-									{link.label}
-								</Link>
-							))}
-						</nav>
-
-						{/* Auth + Book Now + Mobile Toggle */}
-						<div className="flex items-center gap-4">
-							{status === 'authenticated' ? (
-								<div className="hidden items-center gap-4 md:flex">
-									<Link
-										href="/account"
-										className="text-sm font-medium text-charcoal/80 transition-colors hover:text-charcoal"
-									>
-										{session.customer?.firstName || 'Account'}
-									</Link>
-									<CartButton count={cartItemCount} onClick={() => setIsCartOpen(true)} />
-									<Link
-										href="/services"
-										className="rounded-none bg-charcoal px-7 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
-									>
-										Book Now
-									</Link>
-								</div>
-							) : (
-								<div className="hidden items-center gap-4 md:flex">
-									<Link
-										href="/auth/sign-in"
-										className="text-sm font-medium text-charcoal/80 transition-colors hover:text-charcoal"
-									>
-										Sign In
-									</Link>
-									<CartButton count={cartItemCount} onClick={() => setIsCartOpen(true)} />
-									<Link
-										href="/services"
-										className="rounded-none bg-charcoal px-7 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
-									>
-										Book Now
-									</Link>
-								</div>
-							)}
-
-							{/* Mobile cart */}
-							<div className="md:hidden">
-								<CartButton count={cartItemCount} onClick={() => setIsCartOpen(true)} />
-							</div>
-
-							{/* Mobile hamburger */}
-							<button
-								onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-								className="relative z-10 flex h-10 w-10 flex-col items-center justify-center gap-1.5 md:hidden"
-								aria-label="Toggle menu"
-							>
-								<motion.span
-									animate={isMobileMenuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
-									className="block h-[2px] w-6 bg-charcoal"
-								/>
-								<motion.span
-									animate={isMobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
-									className="block h-[2px] w-6 bg-charcoal"
-								/>
-								<motion.span
-									animate={isMobileMenuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
-									className="block h-[2px] w-6 bg-charcoal"
-								/>
-							</button>
-						</div>
-					</div>
-				</div>
-			</header>
-
-			{/* Cart Drawer */}
-			<CartDrawer open={isCartOpen} onClose={() => setIsCartOpen(false)} />
-
-			{/* Mobile Menu Overlay */}
-			<AnimatePresence>
-				{isMobileMenuOpen && (
-					<motion.div
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={{ duration: 0.3 }}
-						className="fixed inset-0 z-40 bg-white"
+				<div
+					className={clsx(
+						'border-b transition-[background-color,border-color,backdrop-filter] duration-500',
+						compact ? 'glass border-line' : 'border-transparent bg-transparent',
+					)}
+				>
+					<div
+						className={clsx(
+							'container-x grid grid-cols-[1fr_auto_1fr] items-center gap-4 transition-[height] duration-500',
+							compact ? 'h-16' : 'h-20',
+						)}
 					>
-						<div className="flex h-full flex-col items-center justify-center gap-8">
-							{navLinks.map((link, i) => (
-								<motion.div
-									key={link.href}
-									initial={{ opacity: 0, y: 20 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ delay: i * 0.1 + 0.2 }}
-								>
+						{/* Left: menu toggle + inline links */}
+						<div className="flex items-center gap-8">
+							<button
+								ref={toggleRef}
+								type="button"
+								onClick={() => setMenuOpen(true)}
+								aria-expanded={menuOpen}
+								aria-haspopup="dialog"
+								aria-label="Open menu"
+								className="group flex h-11 items-center gap-3 text-charcoal outline-none focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-accent"
+							>
+								<span aria-hidden className="flex w-6 flex-col gap-[5px]">
+									<span className="block h-px w-6 origin-left bg-current transition-transform duration-500 group-hover:scale-x-75" />
+									<span className="block h-px w-4 origin-left bg-current transition-transform duration-500 group-hover:scale-x-150" />
+								</span>
+								<span className="eyebrow max-sm:sr-only">Menu</span>
+							</button>
+							<nav aria-label="Main" className="hidden items-center gap-7 lg:flex">
+								{BAR_LINKS.map((link) => (
 									<Link
+										key={link.href}
 										href={link.href}
-										onClick={() => setIsMobileMenuOpen(false)}
-										className="heading-display text-4xl text-charcoal transition-colors hover:text-accent"
+										aria-current={pathname === link.href ? 'page' : undefined}
+										className={clsx(
+											'link-underline eyebrow transition-colors hover:text-charcoal',
+											pathname === link.href ? 'text-charcoal' : 'text-charcoal/60',
+										)}
 									>
 										{link.label}
 									</Link>
-								</motion.div>
-							))}
-							<motion.div
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.6 }}
-								className="flex flex-col items-center gap-3"
-							>
-								<Link
-									href="/services"
-									onClick={() => setIsMobileMenuOpen(false)}
-									className="mt-4 inline-block bg-charcoal px-10 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
-								>
-									Book Now
-								</Link>
-								{status === 'authenticated' ? (
-									<>
-										<Link
-											href="/account"
-											onClick={() => setIsMobileMenuOpen(false)}
-											className="text-sm font-medium text-charcoal/70 hover:text-accent"
-										>
-											My Account
-										</Link>
-										<button
-											onClick={() => { signOut(); setIsMobileMenuOpen(false); }}
-											className="text-sm font-medium text-warm-gray hover:text-accent"
-										>
-											Sign Out
-										</button>
-									</>
-								) : (
-									<Link
-										href="/auth/sign-in"
-										onClick={() => setIsMobileMenuOpen(false)}
-										className="text-sm font-medium text-charcoal/70 hover:text-accent"
-									>
-										Sign In
-									</Link>
-								)}
-							</motion.div>
+								))}
+							</nav>
 						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
-		</>
-	);
-}
 
-function CartButton({ count, onClick }: { count: number; onClick: () => void }) {
-	return (
-		<button
-			onClick={onClick}
-			className="relative flex h-10 w-10 items-center justify-center text-charcoal/80 transition-colors hover:text-charcoal"
-			aria-label={`Cart (${count} items)`}
-		>
-			<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-				<path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-			</svg>
-			{count > 0 && (
-				<span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center bg-accent text-[10px] font-bold text-white">
-					{count}
-				</span>
-			)}
-		</button>
+						{/* Centre: wordmark */}
+						<Link
+							href="/"
+							aria-label={`${siteConfig.name} — home`}
+							className={clsx(
+								'font-display leading-none tracking-[-0.03em] text-charcoal transition-[font-size] duration-500',
+								compact ? 'text-2xl' : 'text-[1.75rem] md:text-3xl',
+							)}
+						>
+							{siteConfig.logo.text}
+							<span className="text-accent">{siteConfig.logo.accent}</span>
+						</Link>
+
+						{/* Right: account, card, reserve */}
+						<div className="flex items-center justify-end gap-4 md:gap-6">
+							{authenticated ? (
+								<Link href="/account" className="link-underline eyebrow hidden text-charcoal/70 hover:text-charcoal md:inline-block">
+									{firstName || 'Account'}
+								</Link>
+							) : (
+								<Link href="/auth/sign-in" className="link-underline eyebrow hidden text-charcoal/70 hover:text-charcoal md:inline-block">
+									Sign in
+								</Link>
+							)}
+							<CartPill count={cardCount} onClick={openCart} />
+							<Link href="/services" className={buttonClasses({ size: 'sm', className: 'max-lg:hidden' })}>
+								Reserve
+							</Link>
+						</div>
+					</div>
+				</div>
+			</motion.header>
+
+			<MenuOverlay
+				open={menuOpen}
+				onClose={closeMenu}
+				authenticated={authenticated}
+				firstName={firstName}
+				onSignOut={handleSignOut}
+				onOpenCard={openCart}
+				cardCount={cardCount}
+			/>
+
+			<CartDrawer open={cartOpen} onClose={closeCart} />
+		</>
 	);
 }

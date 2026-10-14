@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import type { JWT } from 'next-auth/jwt';
-import type { SelfServiceProfileResponse as Customer } from '@opencals/storefront-sdk';
+import type { SelfServiceProfileResponse } from '@opencals/storefront-sdk';
 import '@/lib/opencals';
 import { AuthService, SelfService } from '@opencals/storefront-sdk';
 
@@ -50,7 +50,7 @@ const REFRESH_MARGIN_MS = 60 * 1000;
 
 /**
  * When an access token expires, read from its `exp` claim. Customer tokens live 15 minutes (backend
- * default); the fallback only covers a token we can't decode.
+ * default); the fallback only covers a token we can't decode. Edge-safe (atob, no Buffer).
  */
 function tokenExpiry(accessToken: string | undefined): number {
 	try {
@@ -92,7 +92,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 	}
 }
 
-function mapCustomer(customer: Customer | undefined) {
+function mapCustomer(customer: SelfServiceProfileResponse | undefined) {
 	if (!customer) return undefined;
 	return {
 		id: customer.id,
@@ -191,6 +191,62 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 						email: customer?.email ?? undefined,
 						accessToken,
 						refreshToken,
+						customer: mapCustomer(customer),
+					};
+				} catch {
+					return null;
+				}
+			},
+		}),
+		// Passwordless login: verify a 6-digit email code
+		Credentials({
+			id: 'login-code',
+			credentials: { email: {}, code: {} },
+			async authorize(credentials) {
+				const { email, code } = credentials as { email: string; code: string };
+
+				try {
+					const { data } = await AuthService.verifyLoginCode({ body: { email, code } });
+					const { accessToken, refreshToken } = data!;
+
+					const { data: customer } = await SelfService.getProfile({
+						headers: { Authorization: `Bearer ${accessToken}` },
+					});
+
+					return {
+						id: customer?.id ?? email,
+						email,
+						accessToken,
+						refreshToken,
+						customer: mapCustomer(customer),
+					};
+				} catch {
+					return null;
+				}
+			},
+		}),
+		// Magic link: sign in with pre-resolved tokens (from /link/[token] resolution)
+		Credentials({
+			id: 'magic-link',
+			credentials: { accessToken: {}, refreshToken: {} },
+			async authorize(credentials) {
+				const { accessToken, refreshToken } = credentials as {
+					accessToken: string;
+					refreshToken: string;
+				};
+
+				if (!accessToken) return null;
+
+				try {
+					const { data: customer } = await SelfService.getProfile({
+						headers: { Authorization: `Bearer ${accessToken}` },
+					});
+
+					return {
+						id: customer?.id ?? 'magic-customer',
+						email: customer?.email ?? undefined,
+						accessToken,
+						refreshToken: refreshToken ?? '',
 						customer: mapCustomer(customer),
 					};
 				} catch {

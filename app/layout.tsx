@@ -1,10 +1,26 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Bodoni_Moda, Geist_Mono, Inter_Tight } from 'next/font/google';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Providers } from '@/components/providers';
 import { siteConfig } from '@/lib/site-config';
 import { getStoreSettings } from '@/lib/server-data';
+import { IntroScript } from '@/components/motion/intro-curtain';
 import './globals.css';
+
+const bodoni = Bodoni_Moda({
+	subsets: ['latin'],
+	style: ['normal', 'italic'],
+	axes: ['opsz'],
+	variable: '--font-bodoni',
+	display: 'swap',
+});
+const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-inter-tight', display: 'swap' });
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap' });
+
+export const viewport: Viewport = {
+	themeColor: '#faf7f3',
+};
 
 const title = `${siteConfig.name} — ${siteConfig.tagline}`;
 
@@ -41,7 +57,10 @@ export default async function RootLayout({
 	const initialSettings = await getStoreSettings();
 
 	return (
-		<html lang="en">
+		<html lang="en" className={`${bodoni.variable} ${interTight.variable} ${geistMono.variable}`} suppressHydrationWarning>
+			<head>
+				<IntroScript />
+			</head>
 			<body>
 				{/* Allow parent frames to control scrolling via postMessage */}
 				<script

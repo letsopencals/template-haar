@@ -205,4 +205,12 @@ export const siteConfig = {
 				'We use clean, responsibly sourced products and implement eco-friendly practices throughout our salon.',
 		},
 	],
+
+	/** "Before your visit" checklist on the booking confirmation (/thank-you) */
+	beforeYourVisit: [
+		{ title: 'Arrive ten minutes early', body: 'Time for a coffee and a proper consultation before we begin.' },
+		{ title: 'Come as you are', body: 'For cuts, arrive with hair as you usually wear it so we can see how it falls.' },
+		{ title: 'Colour appointments', body: 'Wash your hair a day or two before — natural oils protect the scalp.' },
+		{ title: 'Need to change plans?', body: 'Manage your booking from your account, or give the salon a call.' },
+	],
 };

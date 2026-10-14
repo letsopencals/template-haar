@@ -78,6 +78,16 @@ responsibility and independent dependencies (see `hooks/use-checkout-questions.t
 checkout context / cart context). A large hook may remain as a thin orchestrator
 that composes the smaller ones (`hooks/use-booking-flow.ts`).
 
+## Design & motion (HAAR-specific)
+
+`DESIGN.md` is the design contract (palette, type, the arch motif, voice). Read it before adding UI.
+
+- **Motion:** always use `components/motion/*` (`Reveal`, `RevealText`, `RevealArch`, `ParallaxImage`, `CountUp`, `Marquee`, …) and the `DURATION`/`EASE_OUT` tokens from `easing.ts`. Don't hand-roll framer variants. Each motion piece checks `useReducedMotion()` (hydration-safe) and must leave content visible when motion is off.
+- **Lenis** smooth scroll runs from `components/motion/smooth-scroll.tsx`. Scrollable drawers, sheets and modals need `data-lenis-prevent`, or they won't scroll. Programmatic scrolling goes through `useSmoothScroll()` (fallback: `scrollIntoView`).
+- **Custom CSS classes go in `@layer components`** in `app/globals.css` (`.arch`, `.eyebrow`, `.display-*`, …). Unlayered CSS beats every Tailwind utility, so an unlayered `.eyebrow { color }` silently overrides `text-*` classes.
+- **Grids that hold wide content:** give the grid `grid-cols-1` below the breakpoint, and give its children `min-w-0`. A grid with no explicit columns gets an `auto` track that grows to its widest child (the horizontal day ribbon once pushed the booking page to 2700px on phones).
+- **Hydration:** anything that depends on the visitor's clock, timezone or locale (the open-today chip, the footer timezone list, countdowns) renders a neutral value on the server and the live value after `useHydrated()` / `useNow()`. The timezone context guesses the zone on both server and browser, so don't print it during SSR.
+
 ## Re-render hygiene
 
 - **Memoize context provider values** with `useMemo` — an inline `value={{...}}`

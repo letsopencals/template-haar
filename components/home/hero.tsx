@@ -1,119 +1,140 @@
-import Link from 'next/link';
-import { siteConfig } from '@/lib/site-config';
-import hero1 from '@/public/images/hero/hero-main.jpg';
-import hero2 from '@/public/images/hero/hero-secondary.jpg';
+'use client';
 
-export function Hero() {
-	const { hero } = siteConfig;
+import { useRef } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { IntroCurtain } from '@/components/motion/intro-curtain';
+import { Reveal, RevealText } from '@/components/motion/reveal';
+import { RevealArch } from '@/components/motion/reveal-arch';
+import { useReducedMotion } from '@/components/motion/use-reduced-motion';
+import { ArchOutline } from '@/components/motifs/arch-outline';
+import { Seal } from '@/components/motifs/seal';
+import { buttonClasses } from '@/components/ui/button';
+import { OpenTodayChip } from '@/components/home/open-today-chip';
+import { siteConfig } from '@/lib/site-config';
+import heroMain from '@/public/images/hero/hero-main.jpg';
+import heroSecondary from '@/public/images/hero/hero-secondary.jpg';
+
+const SCROLL_OFFSET = ['start start', 'end start'] as const;
+
+/**
+ * Nº 01 — the masthead. Giant line-masked headline, the salon's arched mirror
+ * as the hero plate (LCP: `priority`), an offset secondary plate, a brass arch
+ * ornament and a slowly turning seal. The intro curtain plays over it once per
+ * session.
+ */
+export function Hero({ issueLabel }: { issueLabel: string }) {
+	const ref = useRef<HTMLElement>(null);
+	const reduce = useReducedMotion();
+	const { scrollYProgress } = useScroll({ target: ref, offset: [...SCROLL_OFFSET] });
+	const plateScale = useTransform(scrollYProgress, [0, 1], [1, 1.14]);
+	const plateY = useTransform(scrollYProgress, [0, 1], ['0%', '6%']);
+	const secondaryY = useTransform(scrollYProgress, [0, 1], ['0%', '-38%']);
+	const headlineY = useTransform(scrollYProgress, [0, 1], ['0%', '-18%']);
 
 	return (
-		<section id="hero" className="relative overflow-hidden bg-white">
-			{/* Top accent line */}
-			<div className="absolute top-0 left-0 right-0 h-[3px] bg-accent" />
+		<section id="hero" ref={ref} className="relative overflow-hidden bg-paper pt-24 md:pt-28">
+			<IntroCurtain />
 
-			<div className="mx-auto max-w-[1400px] px-6 lg:px-10">
-				<div className="grid items-center gap-8 pt-28 pb-16 lg:grid-cols-12 lg:pt-32 lg:pb-20">
-					{/* Left content */}
-					<div className="relative z-10 lg:col-span-5 lg:py-16">
-						<div className="animate-fade-up" style={{ animationDelay: '0.1s' }}>
-							<p className="text-xs font-semibold uppercase tracking-[0.3em] text-warm-gray">
-								{hero.subtitle}
-							</p>
-						</div>
-
-						<h1
-							className="heading-display mt-6 text-6xl text-charcoal animate-fade-up sm:text-7xl lg:text-8xl"
-							style={{ animationDelay: '0.2s' }}
-						>
-							{hero.heading.map((line, i) => (
-								<span key={i}>
-									{line}
-									<br />
-								</span>
-							))}
-							<span className="heading-display-italic text-accent">{hero.headingAccent}</span>
-						</h1>
-
-						<p
-							className="mt-8 max-w-sm text-base leading-relaxed text-warm-gray animate-fade-up"
-							style={{ animationDelay: '0.35s' }}
-						>
-							{hero.body}
-						</p>
-
-						<div
-							className="mt-10 flex items-center gap-6 animate-fade-up"
-							style={{ animationDelay: '0.5s' }}
-						>
-							<Link
-								href={hero.cta.href}
-								className="group relative inline-flex items-center gap-3 bg-charcoal px-8 py-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition-all hover:bg-accent"
-							>
-								{hero.cta.label}
-								<svg
-									className="h-4 w-4 transition-transform group-hover:translate-x-1"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									strokeWidth={2}
-								>
-									<path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-								</svg>
-							</Link>
-							<Link
-								href={hero.secondaryCta.href}
-								className="link-underline text-xs font-semibold uppercase tracking-[0.2em] text-charcoal"
-							>
-								{hero.secondaryCta.label}
-							</Link>
-						</div>
-					</div>
-
-					{/* Right — Image grid */}
-					<div className="relative lg:col-span-7">
-						<div className="grid grid-cols-12 gap-4">
-							{/* Main large image */}
-							<div
-								className="col-span-8 aspect-[3/4] overflow-hidden animate-fade-in"
-								style={{ animationDelay: '0.2s' }}
-							>
-								<img src={hero1.src} className="image-placeholder h-full w-full object-cover" />
-							</div>
-
-							{/* Side column */}
-							<div className="col-span-4 flex flex-col gap-4">
-								<div
-									className="aspect-square overflow-hidden animate-fade-up"
-									style={{ animationDelay: '0.35s' }}
-								>
-									<img src={hero2.src} className="image-placeholder h-full w-full object-cover" />
-								</div>
-
-								<div
-									className="flex flex-1 items-center justify-center bg-accent p-6 animate-fade-up"
-									style={{ animationDelay: '0.5s' }}
-								>
-									<div className="text-center">
-										<span className="font-display text-4xl font-bold text-white">{hero.stat.value}</span>
-										<p className="mt-1 text-xs font-medium uppercase tracking-widest text-white/80 whitespace-pre-line">
-											{hero.stat.label}
-										</p>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						{/* Oversized background text */}
-						<div
-							className="pointer-events-none absolute -bottom-10 -right-10 z-0 select-none opacity-[0.04] animate-fade-in"
-							style={{ animationDelay: '0.4s' }}
-						>
-							<span className="font-display text-[12rem] font-black leading-none tracking-tighter text-charcoal lg:text-[18rem]">
-								{hero.backgroundText}
-							</span>
-						</div>
-					</div>
+			{/* Masthead strip */}
+			<div className="container-x">
+				<div className="flex flex-wrap items-center justify-between gap-3 border-y border-line py-3">
+					<span className="eyebrow tabular text-warm-gray">{issueLabel}</span>
+					<span className="eyebrow hidden text-charcoal md:inline">
+						{siteConfig.name} — {siteConfig.tagline}
+					</span>
+					<OpenTodayChip />
 				</div>
+			</div>
+
+			<div className="container-x relative grid gap-12 pb-20 pt-10 md:pb-28 lg:grid-cols-12 lg:gap-8 lg:pt-8">
+				{/* Copy column */}
+				<motion.div className="relative z-10 lg:col-span-7 lg:pt-2" style={reduce ? undefined : { y: headlineY }}>
+					<span className="eyebrow text-warm-gray">Nº 01 — {siteConfig.hero.subtitle}</span>
+					<h1 className="display-xl mt-6 text-charcoal">
+						<RevealText as="span" className="block" lineClassName="pb-[0.06em]" text="The Art of" trigger="mount" delay={0.15} />
+						<RevealText
+							as="span"
+							className="block pl-[0.6em] italic text-accent"
+							lineClassName="pb-[0.12em] font-display italic"
+							text={siteConfig.hero.headingAccent}
+							trigger="mount"
+							delay={0.3}
+						/>
+					</h1>
+
+					<div className="mt-10 grid gap-10 sm:grid-cols-[1fr_auto] sm:items-end lg:mt-10 lg:max-w-[40rem]">
+						<Reveal delay={0.5}>
+							<p className="max-w-sm text-[17px] leading-[1.7] text-charcoal/75">{siteConfig.hero.body}</p>
+							<div className="mt-8 flex flex-wrap items-center gap-6">
+								<Link href="/services" className={buttonClasses({ variant: 'primary', size: 'lg' })}>
+									Reserve your chair
+									<span aria-hidden className="transition-transform duration-500 group-hover/btn:translate-x-1">
+										→
+									</span>
+								</Link>
+								<Link href="#services" className="link-underline eyebrow text-charcoal">
+									Read the menu
+								</Link>
+							</div>
+						</Reveal>
+
+						{/* Offset secondary plate */}
+						<motion.figure className="relative hidden w-40 sm:block lg:w-44" style={reduce ? undefined : { y: secondaryY }}>
+							<RevealArch className="aspect-[3/4] w-full" trigger="mount" delay={0.55}>
+								<Image
+									src={heroSecondary}
+									alt="A stylist finishing a blow-dry"
+									fill
+									sizes="176px"
+									placeholder="blur"
+									className="object-cover object-[55%_50%]"
+								/>
+							</RevealArch>
+							<figcaption className="mt-2 flex justify-between text-[0.7rem] text-warm-gray">
+								<span className="tabular text-brass">Pl. 02</span>
+								<span className="italic-display">The finish</span>
+							</figcaption>
+						</motion.figure>
+					</div>
+				</motion.div>
+
+				{/* Hero plate */}
+				<div className="relative lg:col-span-5">
+					<figure className="relative mx-auto w-full max-w-[30rem] lg:ml-auto">
+						<ArchOutline className="absolute -right-4 -top-4 h-full w-full md:-right-6 md:-top-6" />
+						<RevealArch className="aspect-[3/4] w-full md:aspect-[5/7]" trigger="mount" delay={0.1}>
+							<motion.div className="absolute inset-0" style={reduce ? undefined : { scale: plateScale, y: plateY }}>
+								<Image
+									src={heroMain}
+									alt="The HAAR salon floor with its arched mirrors"
+									fill
+									priority
+									placeholder="blur"
+									sizes="(min-width: 1440px) 480px, (min-width: 1024px) 36vw, 92vw"
+									className="object-cover object-[42%_50%]"
+								/>
+							</motion.div>
+						</RevealArch>
+						<figcaption className="mt-3 flex items-baseline justify-between border-t border-line pt-2 text-[0.72rem] text-warm-gray">
+							<span className="tabular text-brass">Pl. 01</span>
+							<span>
+								<span className="italic-display text-charcoal">The arched mirror</span> · Bleecker St.
+							</span>
+						</figcaption>
+						<div className="absolute -bottom-8 -left-8 hidden md:block lg:-left-16">
+							<Seal motion="spin" size={128} className="bg-paper/80 rounded-full" />
+						</div>
+					</figure>
+				</div>
+			</div>
+
+			{/* Scroll cue */}
+			<div aria-hidden className="container-x flex items-center gap-4 pb-6 text-warm-gray">
+				<span className="eyebrow">Scroll</span>
+				<span className="h-px w-16 bg-brass/60" />
+				<span className="eyebrow tabular">01 / 08</span>
 			</div>
 		</section>
 	);
