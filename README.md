@@ -16,7 +16,7 @@ Sign up at **[app.opencals.com](https://app.opencals.com)** and create a **Dev S
 
 ### 2. Get your API key
 
-Go to your **User Account Settings** in the Opencals dashboard and generate a **Storefront API key**. You'll need this to connect the template to your store.
+Go to your **User Account Settings** in the Opencals dashboard and generate a **private storefront key** (`spk_`). The template calls the API from its server, so the key stays secret, and it forwards each visitor's IP (`nextBuyerIp` in `lib/opencals.ts`) so visitors get their own rate limits. If your server has fixed outgoing IPs you can restrict the key to them; on Vercel, leave the list empty. A public key (`sfk_`) also works, but then all visitors share your server's limits.
 
 ### 3. Deploy to Vercel
 
@@ -26,7 +26,7 @@ During deployment, Vercel will ask you to set environment variables:
 
 | Variable | Value |
 |----------|-------|
-| `OPENCALS_API_KEY` | Your Storefront API key (starts with `sfk_`) |
+| `OPENCALS_API_KEY` | Your private storefront key (starts with `spk_`) |
 | `AUTH_SECRET` | Any random string — used for session encryption |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | *(optional)* Your Stripe publishable key for payments |
 
@@ -101,7 +101,7 @@ cp .env.example .env
 Edit `.env` with your values:
 
 ```
-OPENCALS_API_KEY=sfk_your_key_here
+OPENCALS_API_KEY=spk_your_key_here
 AUTH_SECRET=change_me_to_a_random_string
 ```
 
@@ -198,7 +198,7 @@ lib/
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENCALS_API_KEY` | Yes | Storefront API key from your Opencals dashboard |
+| `OPENCALS_API_KEY` | Yes | Private storefront key (`spk_`) from your Opencals dashboard |
 | `AUTH_SECRET` | Yes | Random string for NextAuth session encryption |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | No | Stripe publishable key for payment processing |
 | `OPENCALS_API_URL` | No | Override API base URL (defaults to production) |
