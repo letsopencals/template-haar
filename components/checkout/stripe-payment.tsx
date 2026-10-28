@@ -6,8 +6,6 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 import { Button } from '@/components/ui/button';
 import { STRIPE_FORM_ID } from './form-ids';
 
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
-
 // HAAR palette, squared corners, Inter Tight — the Payment Element should read
 // as part of the page, not an embedded widget.
 const CHARCOAL = '#1a1a1a';
@@ -63,6 +61,8 @@ const FONTS: StripeElementsOptions['fonts'] = [
 interface StripePaymentProps {
 	clientSecret: string;
 	stripeAccountId?: string | null;
+	/** Key returned by checkout start (matches the account's test/live mode). */
+	publishableKey?: string | null;
 	onSuccess: (paymentIntentId: string) => void;
 	onError: (message: string) => void;
 	disabled?: boolean;
@@ -75,6 +75,7 @@ interface StripePaymentProps {
 export function StripePayment({
 	clientSecret,
 	stripeAccountId,
+	publishableKey,
 	onSuccess,
 	onError,
 	disabled,
@@ -84,7 +85,7 @@ export function StripePayment({
 	const stripePromise = useMemo(() => {
 		if (!publishableKey) return null;
 		return loadStripe(publishableKey, { stripeAccount: stripeAccountId ?? undefined });
-	}, [stripeAccountId]);
+	}, [publishableKey, stripeAccountId]);
 
 	const options = useMemo<StripeElementsOptions>(() => ({ clientSecret, appearance: APPEARANCE, fonts: FONTS }), [clientSecret]);
 
@@ -92,8 +93,7 @@ export function StripePayment({
 		return (
 			<div className="border border-red-200 bg-red-50 p-5" role="alert">
 				<p className="text-sm text-red-700">
-					Card payments aren&rsquo;t configured. Set{' '}
-					<code className="bg-red-100 px-1 py-0.5 text-xs">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> in your environment.
+					Card payments aren&rsquo;t set up for this store yet. Connect Stripe in the Opencals dashboard.
 				</p>
 			</div>
 		);

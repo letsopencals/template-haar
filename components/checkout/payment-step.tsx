@@ -29,6 +29,7 @@ export function PaymentStep({ payLabel, onProcessingChange }: PaymentStepProps) 
 				<StripePayment
 					clientSecret={paymentData.clientSecret}
 					stripeAccountId={paymentData.stripeAccountId}
+					publishableKey={paymentData.publishableKey}
 					onSuccess={(piId) => handleSubmitCheckout(piId)}
 					onError={(msg) => setError(msg)}
 					disabled={isExpired || submitting}
