@@ -2,7 +2,7 @@
 
 import type { FormEvent } from 'react';
 import { clsx } from 'clsx';
-import type { CustomerProviderCatalogItem } from '@opencals/storefront-sdk';
+import type { CustomerProviderCatalogItem, PaymentProviderName } from '@opencals/storefront-sdk';
 import { useCheckout } from '@/contexts/checkout-context';
 import { Button } from '@/components/ui/button';
 import { PAYMENT_METHOD_FORM_ID } from './form-ids';
@@ -26,8 +26,8 @@ export function methodActionLabel(provider: Pick<CustomerProviderCatalogItem, 'n
 }
 
 interface PaymentMethodsProps {
-	method: CustomerProviderCatalogItem['name'] | undefined;
-	onMethodChange: (name: CustomerProviderCatalogItem['name']) => void;
+	method: PaymentProviderName | undefined;
+	onMethodChange: (name: PaymentProviderName) => void;
 }
 
 /**
@@ -88,7 +88,7 @@ interface MethodCardProps {
 	index: number;
 	checked: boolean;
 	disabled: boolean;
-	onSelect: (name: CustomerProviderCatalogItem['name']) => void;
+	onSelect: (name: PaymentProviderName) => void;
 }
 
 function MethodCard({ provider, index, checked, disabled, onSelect }: MethodCardProps) {
@@ -140,7 +140,7 @@ function MethodCard({ provider, index, checked, disabled, onSelect }: MethodCard
  * displayName/description are written for merchants ("Record cash payments
  * collected outside the system"), so they're only a fallback for unknown ones.
  */
-function customerTitle(name: CustomerProviderCatalogItem['name']): string | undefined {
+function customerTitle(name: PaymentProviderName): string | undefined {
 	switch (name) {
 		case 'stripe':
 			return 'Card';
@@ -157,7 +157,7 @@ function customerTitle(name: CustomerProviderCatalogItem['name']): string | unde
 	}
 }
 
-function customerCopy(name: CustomerProviderCatalogItem['name']): string | undefined {
+function customerCopy(name: PaymentProviderName): string | undefined {
 	switch (name) {
 		case 'stripe':
 			return 'Card, Apple Pay or Google Pay — paid securely now.';

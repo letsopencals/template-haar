@@ -5,6 +5,7 @@ import type {
 	CheckoutOrder,
 	CheckoutResponse,
 	PaymentInstructions,
+	PaymentProviderName,
 	StorefrontAppointmentPendingReason,
 } from '@opencals/storefront-sdk';
 
@@ -17,7 +18,7 @@ export interface CheckoutMemo {
 	orderName: string | null;
 	savedAt: number;
 	/** The method the guest chose (provider name). */
-	provider: PaymentInstructions['provider'] | null;
+	provider: PaymentProviderName | null;
 	paymentStatus: CheckoutOrder['paymentStatus'] | null;
 	dueAt: string | null;
 	instructions: PaymentInstructions | null;
@@ -42,7 +43,7 @@ export function waitingReason(
 	return null;
 }
 
-export function rememberCheckout(data: CheckoutResponse, provider: string | null): void {
+export function rememberCheckout(data: CheckoutResponse, provider: PaymentProviderName | null): void {
 	const order = data.order;
 	if (!order?.id) return;
 	const memo: CheckoutMemo = {

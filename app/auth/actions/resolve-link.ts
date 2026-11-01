@@ -1,15 +1,25 @@
 'use server';
 
 import '@/lib/opencals';
-import { AuthService } from '@opencals/storefront-sdk';
+import { AuthService, OpencalsApiError, type MagicLinkErrorCode } from '@opencals/storefront-sdk';
 import { signIn } from '@/lib/auth';
 
 export type ResolveLinkResult = {
 	success: boolean;
 	error?: string;
-	errorCode?: 'TOKEN_EXPIRED' | 'TOKEN_USED' | 'TOKEN_INVALID';
+	errorCode?: MagicLinkErrorCode;
 	redirectPath?: string;
 };
+
+const MAGIC_LINK_CODES: Record<MagicLinkErrorCode, true> = { TOKEN_INVALID: true, TOKEN_USED: true, TOKEN_EXPIRED: true };
+
+const isMagicLinkCode = (v: unknown): v is MagicLinkErrorCode => typeof v === 'string' && v in MAGIC_LINK_CODES;
+
+/** The API's `code` for a rejected link (on the thrown error or on the returned error body), if it sent one. */
+function magicLinkCode(err: unknown): MagicLinkErrorCode | undefined {
+	const code = err instanceof OpencalsApiError ? (err.code ?? err.body?.code) : err && typeof err === 'object' && 'code' in err ? err.code : undefined;
+	return isMagicLinkCode(code) ? code : undefined;
+}
 
 /**
  * Resolves a magic-link token (`/link/{token}`). For most purposes the backend
@@ -38,9 +48,13 @@ export async function resolveLink(token: string): Promise<ResolveLinkResult> {
 			err && typeof err === 'object' && 'message' in err
 				? String((err as { message: unknown }).message)
 				: 'Invalid link';
-		let errorCode: ResolveLinkResult['errorCode'] = 'TOKEN_INVALID';
-		if (message.includes('expired')) errorCode = 'TOKEN_EXPIRED';
-		else if (message.includes('used')) errorCode = 'TOKEN_USED';
+		// Prefer the API's `code`; older backends only said it in the message.
+		let errorCode = magicLinkCode(err);
+		if (!errorCode) {
+			if (message.includes('expired')) errorCode = 'TOKEN_EXPIRED';
+			else if (message.includes('used')) errorCode = 'TOKEN_USED';
+			else errorCode = 'TOKEN_INVALID';
+		}
 		return { success: false, error: message, errorCode };
 	}
 }

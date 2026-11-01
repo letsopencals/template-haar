@@ -11,27 +11,27 @@ import { rememberCheckout } from '@/lib/checkout-outcome';
 import type {
 	CustomerProviderCatalogItem,
 	CheckoutCustomer,
+	CheckoutErrorCode,
+	CheckoutErrorResponse,
 	CheckoutStartResponse,
 	CheckoutResponse,
 	StartCheckout,
 	SubmitCheckout,
 	CartItem,
+	PaymentProviderName,
 	CheckoutQuestionResponse as CheckoutQuestion,
 } from '@opencals/storefront-sdk';
 
 export type CheckoutStep = 'customer' | 'questions' | 'payment-select' | 'payment';
 
-/** A payment method's provider name. */
-type ProviderName = CustomerProviderCatalogItem['name'];
-
 // The backend can override the requested provider with the "no payment required" fallback when nothing
 // is collectible.
-function isNoPaymentRequired(provider: CheckoutStartResponse['provider']): boolean {
+function isNoPaymentRequired(provider: PaymentProviderName): boolean {
 	return provider === 'no_payment_required';
 }
 
 /** The API names checkout conflicts with a `code`; it picks the wording, the salon's voice writes it. */
-const CONFLICT_COPY: Record<string, string> = {
+const CONFLICT_COPY: Partial<Record<CheckoutErrorCode, string>> = {
 	CART_EXPIRED: 'Your hold lapsed and that time has since been taken. Choose another time and we’ll hold it for you.',
 	PAYMENT_NOT_AUTHORIZED: 'Your card wasn’t authorised, so nothing was booked or charged. Try again, or use another card.',
 	CHECKOUT_IN_PROGRESS: 'We’re still finishing your booking. Give it a moment and try again.',
@@ -43,16 +43,19 @@ const BUSY_PAUSE_MS = 1500;
 class CheckoutConflict extends Error {
 	constructor(
 		message: string,
-		readonly code?: string,
+		readonly code?: CheckoutErrorCode,
 		readonly orderId?: string,
 	) {
 		super(message);
 	}
 }
 
+/** What `/api/checkout/*` answers on failure (see `lib/api-error-handler.ts`). */
+type CheckoutErrorJson = { error?: string } & Partial<Pick<CheckoutErrorResponse, 'code' | 'orderId'>>;
+
 async function failureOf(res: Response, fallback: string): Promise<CheckoutConflict> {
 	try {
-		const data = (await res.json()) as { error?: string; code?: string; orderId?: string };
+		const data = (await res.json()) as CheckoutErrorJson;
 		return new CheckoutConflict((data.code && CONFLICT_COPY[data.code]) || data.error || fallback, data.code, data.orderId);
 	} catch {
 		return new CheckoutConflict(fallback);
@@ -84,7 +87,7 @@ interface CheckoutContextValue {
 
 	// Payment
 	providers: CustomerProviderCatalogItem[];
-	selectedProvider: ProviderName | null;
+	selectedProvider: PaymentProviderName | null;
 	paymentData: CheckoutStartResponse | null;
 
 	// Cart info
@@ -99,7 +102,7 @@ interface CheckoutContextValue {
 	setError: (error: string | null) => void;
 	handleSaveCustomer: (e: React.FormEvent) => Promise<void>;
 	handleSaveAnswers: (e: React.FormEvent) => Promise<void>;
-	handleStartCheckout: (providerName: ProviderName) => Promise<void>;
+	handleStartCheckout: (providerName: PaymentProviderName) => Promise<void>;
 	handleSubmitCheckout: (stripePaymentIntentId?: string) => Promise<void>;
 	extendCart: () => void;
 	/** Drops the card and returns to The Menu to choose a new time. */
@@ -145,10 +148,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 	const [answers, setAnswers] = useState<Record<string, string>>({});
 
 	// Payment
-	const [selectedProvider, setSelectedProvider] = useState<ProviderName | null>(null);
+	const [selectedProvider, setSelectedProvider] = useState<PaymentProviderName | null>(null);
 	const [paymentData, setPaymentData] = useState<CheckoutStartResponse | null>(null);
 	// Read by submit within the same call as start, where state would still be stale.
-	const providerRef = useRef<ProviderName | null>(null);
+	const providerRef = useRef<PaymentProviderName | null>(null);
 
 	// Redirect if no cart — but only once CartProvider has read the stored cart id
 	// from localStorage. Before that cartId is always null, so a hard reload of
@@ -306,7 +309,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
 	// Step 3: Start checkout with the selected provider, then route on how it collects payment
 	const handleStartCheckout = useCallback(
-		async (providerName: ProviderName) => {
+		async (providerName: PaymentProviderName) => {
 			setError(null);
 			setSubmitting(true);
 			setSelectedProvider(providerName);

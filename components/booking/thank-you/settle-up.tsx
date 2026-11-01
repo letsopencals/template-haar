@@ -1,13 +1,13 @@
 'use client';
 
 import moment from 'moment-timezone';
-import type { PaymentInstructions } from '@opencals/storefront-sdk';
+import type { PaymentInstructions, PaymentProviderName } from '@opencals/storefront-sdk';
 import { useSettings } from '@/contexts/settings-context';
 import { buttonClasses } from '@/components/ui/button';
 
 interface SettleUpProps {
 	/** Provider name of the method chosen at checkout (when still known). */
-	provider: PaymentInstructions['provider'] | null;
+	provider: PaymentProviderName | null;
 	instructions: PaymentInstructions | null;
 	dueAt: string | null;
 	/** Order number, the transfer reference. */

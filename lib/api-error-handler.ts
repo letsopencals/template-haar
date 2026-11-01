@@ -1,4 +1,4 @@
-import { OpencalsApiError } from '@opencals/storefront-sdk';
+import { OpencalsApiError, type CheckoutErrorResponse } from '@opencals/storefront-sdk';
 import { NextResponse } from 'next/server';
 
 /**
@@ -9,7 +9,8 @@ import { NextResponse } from 'next/server';
 export function handleApiError(err: unknown, fallbackMessage = 'Internal server error') {
 	if (err instanceof OpencalsApiError) {
 		// Checkout conflicts carry `orderId` (CART_ALREADY_CHECKED_OUT), unauthorised cards `paymentStatus`.
-		const body = err.body ?? {};
+		// The SDK keeps the raw body as `Record<string, unknown>`; this is the one place it's read as the checkout error shape.
+		const body = (err.body ?? {}) as Partial<CheckoutErrorResponse>;
 		const fieldErrors = err.toFieldErrors();
 		return NextResponse.json(
 			{

@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { resolveLink, type ResolveLinkResult } from '@/app/auth/actions/resolve-link';
+import type { MagicLinkErrorCode } from '@opencals/storefront-sdk';
+import { resolveLink } from '@/app/auth/actions/resolve-link';
 import { buttonClasses } from '@/components/ui/button';
 import { AuthLink, AuthShell } from '@/components/auth/auth-shell';
 import { Notice, Spinner } from '@/components/auth/auth-feedback';
 
-type ErrorCode = NonNullable<ResolveLinkResult['errorCode']>;
-
-const ERROR_COPY: Record<ErrorCode, { word: string; lead: string; message: string }> = {
+const ERROR_COPY: Record<MagicLinkErrorCode, { word: string; lead: string; message: string }> = {
 	TOKEN_EXPIRED: {
 		word: 'expired',
 		lead: 'This link has',
@@ -39,7 +38,7 @@ function normalizeRedirect(path: string): string {
 
 export function LinkResolver({ token }: { token: string }) {
 	const router = useRouter();
-	const [errorCode, setErrorCode] = useState<ErrorCode | null>(null);
+	const [errorCode, setErrorCode] = useState<MagicLinkErrorCode | null>(null);
 	const ranRef = useRef(false);
 
 	useEffect(() => {
