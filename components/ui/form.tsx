@@ -1,8 +1,11 @@
 'use client';
 
 import {
+	Children,
+	cloneElement,
 	createContext,
 	forwardRef,
+	isValidElement,
 	useContext,
 	useId,
 	type HTMLAttributes,
@@ -105,9 +108,20 @@ interface FormControlProps {
 
 const FormControl = forwardRef<HTMLDivElement, FormControlProps>(
 	({ children, className }, ref) => {
+		const { error, formMessageId } = useFormField();
+		// A single input gets its error state and message wired for screen readers.
+		const only = Children.count(children) === 1 && isValidElement<Record<string, unknown>>(children) ? children : null;
+		const control = only
+			? cloneElement(only, {
+					'aria-invalid': error ? true : only.props['aria-invalid'],
+					'aria-describedby': error
+						? [only.props['aria-describedby'], formMessageId].filter(Boolean).join(' ')
+						: only.props['aria-describedby'],
+				})
+			: children;
 		return (
 			<div ref={ref} className={className}>
-				{children}
+				{control}
 			</div>
 		);
 	},

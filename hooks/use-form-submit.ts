@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form';
+import { mapFieldErrors } from '@/lib/field-errors';
 import { useApiRequest } from './use-api-request';
 
 interface UseFormSubmitOptions<TData> {
@@ -31,18 +32,28 @@ export function useFormSubmit<TFormValues extends FieldValues, TData = unknown>(
 		onSuccess,
 	});
 
+	// The API's field errors, placed on this form's fields by the end of their path (`customer.email` → `email`).
+	// What no field here can show stays in the banner.
+	const placed = useMemo(
+		() => (request.apiFieldErrors ? mapFieldErrors(request.apiFieldErrors, Object.keys(form.getValues())) : null),
+		[request.apiFieldErrors, form],
+	);
+
 	useEffect(() => {
-		if (request.fieldErrors) {
-			for (const [field, message] of Object.entries(request.fieldErrors)) {
+		const errors = placed ? placed.fields : request.fieldErrors;
+		if (errors) {
+			for (const [field, message] of Object.entries(errors)) {
 				form.setError(field as FieldPath<TFormValues>, { type: 'server', message });
 			}
 		}
-	}, [request.fieldErrors, form]);
+	}, [placed, request.fieldErrors, form]);
+
+	const allPlaced = placed !== null && Object.keys(placed.fields).length > 0;
 
 	return {
 		submit: request.execute,
 		isSubmitting: request.loading,
-		error: request.error,
+		error: allPlaced ? placed.unmapped.join(' ') || null : request.error,
 		clearError: request.reset,
 	};
 }

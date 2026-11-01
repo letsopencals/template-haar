@@ -1,17 +1,22 @@
 import type { ReactNode } from 'react';
 
-/** Editorial field label: eyebrow caption, optional required mark and helper copy. */
+/**
+ * Editorial field label: eyebrow caption, optional required mark and helper copy, and the error under the input
+ * (`${htmlFor}-error`; the input takes `fieldA11y(htmlFor, error, !!hint)`).
+ */
 export function Field({
 	htmlFor,
 	label,
 	required,
 	hint,
+	error,
 	children,
 }: {
 	htmlFor: string;
 	label: ReactNode;
 	required?: boolean;
 	hint?: ReactNode;
+	error?: string;
 	children: ReactNode;
 }) {
 	return (
@@ -30,6 +35,11 @@ export function Field({
 				</p>
 			) : null}
 			{children}
+			{error ? (
+				<p id={`${htmlFor}-error`} className="mt-1.5 text-xs font-medium text-red-600">
+					{error}
+				</p>
+			) : null}
 		</div>
 	);
 }

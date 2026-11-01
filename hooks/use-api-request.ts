@@ -1,12 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ApiFieldErrors } from '@/lib/field-errors';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 interface ApiErrorResponse {
 	error?: string;
 	errors?: Record<string, string>;
+	/** The API's field errors with full dotted paths (`customer.email`), see `lib/api-error-handler.ts`. */
+	fieldErrors?: ApiFieldErrors;
 }
 
 interface UseApiRequestOptions<TData> {
@@ -20,6 +23,8 @@ interface UseApiRequestResult<TData> {
 	data: TData | null;
 	error: string | null;
 	fieldErrors: Record<string, string> | null;
+	/** The API's own field errors (full paths), for forms that place them under their fields. */
+	apiFieldErrors: ApiFieldErrors | null;
 	loading: boolean;
 	execute: (body?: unknown) => Promise<TData | null>;
 	reset: () => void;
@@ -35,6 +40,7 @@ export function useApiRequest<TData>(
 	const [data, setData] = useState<TData | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string> | null>(null);
+	const [apiFieldErrors, setApiFieldErrors] = useState<ApiFieldErrors | null>(null);
 	const [loading, setLoading] = useState(shouldAutoFetch);
 	const abortRef = useRef<AbortController | null>(null);
 	const onSuccessRef = useRef(onSuccess);
@@ -43,6 +49,7 @@ export function useApiRequest<TData>(
 	const reset = useCallback(() => {
 		setError(null);
 		setFieldErrors(null);
+		setApiFieldErrors(null);
 	}, []);
 
 	const execute = useCallback(
@@ -56,6 +63,7 @@ export function useApiRequest<TData>(
 			setLoading(true);
 			setError(null);
 			setFieldErrors(null);
+			setApiFieldErrors(null);
 
 			try {
 				const res = await fetch(url, {
@@ -75,6 +83,7 @@ export function useApiRequest<TData>(
 					if (apiError?.errors && Object.keys(apiError.errors).length > 0) {
 						setFieldErrors(apiError.errors);
 					}
+					if (apiError?.fieldErrors?.length) setApiFieldErrors(apiError.fieldErrors);
 					return null;
 				}
 
@@ -108,5 +117,5 @@ export function useApiRequest<TData>(
 		};
 	}, [shouldAutoFetch, url, execute]);
 
-	return { data, error, fieldErrors, loading, execute, reset };
+	return { data, error, fieldErrors, apiFieldErrors, loading, execute, reset };
 }

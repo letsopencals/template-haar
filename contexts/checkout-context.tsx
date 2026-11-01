@@ -8,6 +8,7 @@ import { useCart } from '@/contexts/cart-context';
 import { usePaymentProviders } from '@/hooks/use-payment-providers';
 import { useCheckoutQuestions } from '@/hooks/use-checkout-questions';
 import { rememberCheckout } from '@/lib/checkout-outcome';
+import { mapFieldErrors, withoutField, type ApiFieldErrors, type FieldErrors } from '@/lib/field-errors';
 import type {
 	CustomerProviderCatalogItem,
 	CheckoutCustomer,
@@ -45,18 +46,28 @@ class CheckoutConflict extends Error {
 		message: string,
 		readonly code?: CheckoutErrorCode,
 		readonly orderId?: string,
+		/** Errors shown under the details fields (the guest goes back to that step to fix them). */
+		readonly fields: FieldErrors = {},
 	) {
 		super(message);
 	}
 }
 
-/** What `/api/checkout/*` answers on failure (see `lib/api-error-handler.ts`). */
-type CheckoutErrorJson = { error?: string } & Partial<Pick<CheckoutErrorResponse, 'code' | 'orderId'>>;
+/** The details step's fields, as named in `fieldErrors`. API paths match on their end (`customer.email` → `email`). */
+const DETAIL_FIELDS = ['email', 'firstName', 'lastName'] as const;
 
+/** What `/api/checkout/*` answers on failure (see `lib/api-error-handler.ts`). */
+type CheckoutErrorJson = { error?: string; fieldErrors?: ApiFieldErrors } & Partial<Pick<CheckoutErrorResponse, 'code' | 'orderId'>>;
+
+/** The failure as a CheckoutConflict; its message is empty when every problem sits under a details field. */
 async function failureOf(res: Response, fallback: string): Promise<CheckoutConflict> {
 	try {
 		const data = (await res.json()) as CheckoutErrorJson;
-		return new CheckoutConflict((data.code && CONFLICT_COPY[data.code]) || data.error || fallback, data.code, data.orderId);
+		const { fields, unmapped } = mapFieldErrors(data.fieldErrors, DETAIL_FIELDS);
+		const message = Object.keys(fields).length
+			? unmapped.join(' ')
+			: (data.code && CONFLICT_COPY[data.code]) || data.error || fallback;
+		return new CheckoutConflict(message, data.code, data.orderId, fields);
 	} catch {
 		return new CheckoutConflict(fallback);
 	}
@@ -66,6 +77,8 @@ interface CheckoutContextValue {
 	// State
 	step: CheckoutStep;
 	error: string | null;
+	/** Details field (`email`, `firstName`, `lastName`) → the message under it. */
+	fieldErrors: FieldErrors;
 	submitting: boolean;
 	checkoutComplete: boolean;
 	/** The held time was taken while the hold had lapsed (CART_EXPIRED): pick a new one. */
@@ -118,14 +131,15 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
 	const [step, setStep] = useState<CheckoutStep>('customer');
 	const [error, setError] = useState<string | null>(null);
+	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 	const [submitting, setSubmitting] = useState(false);
 	const [checkoutComplete, setCheckoutComplete] = useState(false);
 	const [holdLost, setHoldLost] = useState(false);
 
 	// Customer info
-	const [email, setEmail] = useState('');
-	const [firstName, setFirstName] = useState('');
-	const [lastName, setLastName] = useState('');
+	const [email, setEmailState] = useState('');
+	const [firstName, setFirstNameState] = useState('');
+	const [lastName, setLastNameState] = useState('');
 	const [customerId, setCustomerId] = useState<string | null>(null);
 	const [prefilled, setPrefilled] = useState(false);
 
@@ -133,12 +147,36 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		if (session?.customer && !prefilled) {
 			if (session.customer.id) setCustomerId(session.customer.id);
-			if (session.customer.email) setEmail(session.customer.email);
-			if (session.customer.firstName) setFirstName(session.customer.firstName);
-			if (session.customer.lastName) setLastName(session.customer.lastName);
+			if (session.customer.email) setEmailState(session.customer.email);
+			if (session.customer.firstName) setFirstNameState(session.customer.firstName);
+			if (session.customer.lastName) setLastNameState(session.customer.lastName);
 			setPrefilled(true);
 		}
 	}, [session, prefilled]);
+
+	// Editing a field clears its error.
+	const clearField = useCallback((name: string) => setFieldErrors((e) => withoutField(e, name)), []);
+	const setEmail = useCallback(
+		(v: string) => {
+			setEmailState(v);
+			clearField('email');
+		},
+		[clearField],
+	);
+	const setFirstName = useCallback(
+		(v: string) => {
+			setFirstNameState(v);
+			clearField('firstName');
+		},
+		[clearField],
+	);
+	const setLastName = useCallback(
+		(v: string) => {
+			setLastNameState(v);
+			clearField('lastName');
+		},
+		[clearField],
+	);
 
 	// Questions (cart-scoped) and payment providers (cart-aware) both load in
 	// parallel via SWR — independent of the customer-save step, so there's no
@@ -175,6 +213,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		async (e: React.FormEvent) => {
 			e.preventDefault();
 			setError(null);
+			setFieldErrors({});
 			setSubmitting(true);
 
 			try {
@@ -189,8 +228,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 				});
 
 				if (!res.ok) {
-					const data = await res.json();
-					throw new Error(data.error || 'Failed to save customer info');
+					const failure = await failureOf(res, 'Failed to save customer info');
+					setFieldErrors(failure.fields);
+					setError(failure.message || null);
+					return;
 				}
 
 				const saveResult = await res.json();
@@ -260,7 +301,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 	// Every failure path lands here, so the spinner and the back link are never left disabled.
 	const fail = useCallback((err: unknown) => {
 		if (err instanceof CheckoutConflict && err.code === 'CART_EXPIRED') setHoldLost(true);
-		setError(err instanceof Error ? err.message : 'An error occurred');
+		if (err instanceof CheckoutConflict && Object.keys(err.fields).length) {
+			// A detail was rejected: back to Your details, with the message under the field.
+			setFieldErrors(err.fields);
+			setStep('customer');
+			setError(err.message || null);
+		} else {
+			setError(err instanceof Error ? err.message : 'An error occurred');
+		}
 		setSubmitting(false);
 	}, []);
 
@@ -378,6 +426,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		() => ({
 			step,
 			error,
+			fieldErrors,
 			submitting,
 			checkoutComplete,
 			holdLost,
@@ -411,6 +460,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		[
 			step,
 			error,
+			fieldErrors,
 			submitting,
 			checkoutComplete,
 			holdLost,
@@ -418,6 +468,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 			firstName,
 			lastName,
 			customerId,
+			setEmail,
+			setFirstName,
+			setLastName,
 			questions,
 			answers,
 			providers,

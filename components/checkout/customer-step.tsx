@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCheckout } from '@/contexts/checkout-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { fieldA11y } from '@/lib/field-errors';
 import { Field } from './field';
 import { DETAILS_FORM_ID } from './form-ids';
 
@@ -14,6 +15,7 @@ export function CustomerStep() {
 		firstName,
 		lastName,
 		customerId,
+		fieldErrors,
 		setEmail,
 		setFirstName,
 		setLastName,
@@ -33,7 +35,7 @@ export function CustomerStep() {
 					and we&rsquo;ll fill this in.
 				</p>
 			)}
-			<Field htmlFor="checkout-email" label="Email" required>
+			<Field htmlFor="checkout-email" label="Email" required error={fieldErrors.email}>
 				<Input
 					id="checkout-email"
 					type="email"
@@ -42,10 +44,11 @@ export function CustomerStep() {
 					value={email}
 					onChange={(e) => setEmail(e.target.value)}
 					placeholder="you@example.com"
+					{...fieldA11y('checkout-email', fieldErrors.email)}
 				/>
 			</Field>
 			<div className="grid gap-6 sm:grid-cols-2">
-				<Field htmlFor="checkout-first-name" label="First name">
+				<Field htmlFor="checkout-first-name" label="First name" error={fieldErrors.firstName}>
 					<Input
 						id="checkout-first-name"
 						type="text"
@@ -53,9 +56,10 @@ export function CustomerStep() {
 						value={firstName}
 						onChange={(e) => setFirstName(e.target.value)}
 						placeholder="Jane"
+						{...fieldA11y('checkout-first-name', fieldErrors.firstName)}
 					/>
 				</Field>
-				<Field htmlFor="checkout-last-name" label="Last name">
+				<Field htmlFor="checkout-last-name" label="Last name" error={fieldErrors.lastName}>
 					<Input
 						id="checkout-last-name"
 						type="text"
@@ -63,6 +67,7 @@ export function CustomerStep() {
 						value={lastName}
 						onChange={(e) => setLastName(e.target.value)}
 						placeholder="Smith"
+						{...fieldA11y('checkout-last-name', fieldErrors.lastName)}
 					/>
 				</Field>
 			</div>
