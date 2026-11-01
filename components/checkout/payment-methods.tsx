@@ -8,19 +8,21 @@ import { Button } from '@/components/ui/button';
 import { PAYMENT_METHOD_FORM_ID } from './form-ids';
 
 /** Primary-action label for a chosen provider (used here and by the mobile pay bar). */
-export function methodActionLabel(name: string | undefined): string {
-	switch (name) {
+export function methodActionLabel(provider: Pick<CustomerProviderCatalogItem, 'name' | 'checkoutMode'> | undefined): string {
+	switch (provider?.name) {
 		case 'stripe':
 			return 'Continue to card';
 		case 'cash':
-			return 'Confirm — pay at the salon';
+			return 'Book — pay at the salon';
 		case 'bank_transfer':
-			return 'Confirm — pay by transfer';
+			return 'Book — pay by transfer';
+		case 'stripe_invoice':
+			return 'Book — pay by invoice';
 		case 'no_payment_required':
-			return 'Confirm booking';
-		default:
-			return 'Continue';
+			return 'Book';
 	}
+	// Unknown methods: the checkout mode says whether a payment page follows.
+	return provider?.checkoutMode === 'internal' || provider?.checkoutMode === 'redirect' ? 'Continue to payment' : 'Book';
 }
 
 interface PaymentMethodsProps {
@@ -34,12 +36,23 @@ interface PaymentMethodsProps {
  * their mind before anything is created.
  */
 export function PaymentMethods({ method, onMethodChange }: PaymentMethodsProps) {
-	const { providers, submitting, isExpired, handleStartCheckout } = useCheckout();
+	const { providers, submitting, isExpired, holdLost, startOver, handleStartCheckout } = useCheckout();
 
 	const onSubmit = (e: FormEvent) => {
 		e.preventDefault();
 		if (method && !submitting && !isExpired) void handleStartCheckout(method);
 	};
+
+	if (holdLost) {
+		return (
+			<div className="space-y-5">
+				<p className="text-sm text-warm-gray">Nothing was booked or charged.</p>
+				<Button type="button" variant="primary" size="lg" onClick={startOver}>
+					Choose a new time <span aria-hidden>→</span>
+				</Button>
+			</div>
+		);
+	}
 
 	if (providers.length === 0) {
 		return <p className="text-sm text-warm-gray">No payment methods are available right now. Please call the salon to book.</p>;
@@ -63,7 +76,7 @@ export function PaymentMethods({ method, onMethodChange }: PaymentMethodsProps) 
 				</div>
 			</fieldset>
 			<Button type="submit" variant="primary" size="lg" className="max-lg:hidden" disabled={!method || submitting || isExpired}>
-				{submitting ? 'One moment…' : methodActionLabel(method)}
+				{submitting ? 'One moment…' : methodActionLabel(providers.find((p) => p.name === method))}
 				{submitting ? null : <span aria-hidden>→</span>}
 			</Button>
 		</form>
@@ -135,6 +148,10 @@ function customerTitle(name: string): string | undefined {
 			return 'Pay at the salon';
 		case 'bank_transfer':
 			return 'Bank transfer';
+		case 'stripe_invoice':
+			return 'Pay by invoice';
+		case 'no_payment_required':
+			return 'Nothing to pay';
 		default:
 			return undefined;
 	}
@@ -147,7 +164,11 @@ function customerCopy(name: string): string | undefined {
 		case 'cash':
 			return 'Hold the chair now and settle up at the desk after your visit.';
 		case 'bank_transfer':
-			return 'We’ll email the transfer details with your confirmation.';
+			return 'Book now and pay by transfer. The account details follow on the next page and by email.';
+		case 'stripe_invoice':
+			return 'Book now; we email an invoice you can pay online by card or bank.';
+		case 'no_payment_required':
+			return 'Nothing is due for this booking.';
 		default:
 			return undefined;
 	}

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { ThankYouView } from '@/components/booking/thank-you/thank-you-view';
 
 export const metadata: Metadata = {
-	title: 'Booking confirmed',
+	title: 'Thank you',
 	robots: { index: false, follow: false },
 };
 

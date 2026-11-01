@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion, type Transition } from 'framer-motion';
-import type { OrderDetailResponse } from '@opencals/storefront-sdk';
+import type { OrderDetailResponse, StorefrontAppointmentPendingReason } from '@opencals/storefront-sdk';
 import { Seal } from '@/components/motifs/seal';
 import { useReducedMotion } from '@/components/motion/use-reduced-motion';
 import { DURATION, EASE_EXPO } from '@/components/motion/easing';
@@ -19,13 +19,28 @@ const CARD_TRANSITION: Transition = { duration: DURATION.slow, ease: EASE_EXPO }
 interface ConfirmedTicketProps {
 	order: OrderDetailResponse;
 	rows: Row[];
+	/** Set while the booking waits for payment or for the salon; the card then isn't stamped Confirmed. */
+	waiting: StorefrontAppointmentPendingReason | null;
 }
 
+const STAMP: Record<'confirmed' | StorefrontAppointmentPendingReason, { ring: string; title: string }> = {
+	confirmed: { ring: 'Confirmed · See you soon · ', title: 'Confirmed' },
+	awaiting_payment: { ring: 'Received · Awaiting payment · ', title: 'Awaiting payment' },
+	awaiting_approval: { ring: 'Received · Awaiting confirmation · ', title: 'Awaiting confirmation' },
+};
+
+const PAID_LABEL: Record<string, { text: string; tone: string }> = {
+	paid: { text: 'Paid', tone: 'text-emerald-800' },
+	voided: { text: 'Cancelled — not charged', tone: 'text-warm-gray' },
+};
+
 /**
- * The appointment card returns — stamped Confirmed with the brass seal, a
+ * The appointment card returns — stamped with the brass seal (Confirmed, or what it awaits), a
  * perforated tear line, the order number, each visit, and the totals.
  */
-export function ConfirmedTicket({ order, rows }: ConfirmedTicketProps) {
+export function ConfirmedTicket({ order, rows, waiting }: ConfirmedTicketProps) {
+	const stamp = STAMP[waiting ?? 'confirmed'];
+	const payment = PAID_LABEL[order.paymentStatus] ?? { text: 'Payment pending', tone: 'text-amber-800' };
 	const reduce = useReducedMotion();
 	const currency = order.paymentCurrencyCode ?? 'USD';
 	const discount = orderDiscountTotal(order);
@@ -43,7 +58,7 @@ export function ConfirmedTicket({ order, rows }: ConfirmedTicketProps) {
 		>
 			{/* Stamp — sits over the top-right corner of the card. */}
 			<div className="pointer-events-none absolute -top-10 -right-3 z-[3] sm:-top-12 sm:-right-8">
-				<Seal ring="Confirmed · See you soon · " size={124} motion="stamp" className="drop-shadow-sm" />
+				<Seal ring={stamp.ring} size={124} motion="stamp" className="drop-shadow-sm" />
 			</div>
 
 			<header className="relative z-[2] px-6 pt-8 pb-7 sm:px-10 sm:pt-10">
@@ -53,7 +68,7 @@ export function ConfirmedTicket({ order, rows }: ConfirmedTicketProps) {
 				</p>
 				<p className="eyebrow mt-6 text-warm-gray">Appointment card</p>
 				<h2 id="confirmed-title" className="display-sm mt-2 pr-24 text-charcoal">
-					<em>Confirmed</em>
+					<em>{stamp.title}</em>
 				</h2>
 				<dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 text-sm">
 					{orderNo ? (
@@ -104,9 +119,7 @@ export function ConfirmedTicket({ order, rows }: ConfirmedTicketProps) {
 					<div className="flex items-baseline justify-between gap-4 border-t border-line pt-3">
 						<dt className="eyebrow text-charcoal">
 							Total{' '}
-							<span className={order.isFullyPaid ? 'text-emerald-800' : 'text-amber-800'}>
-								· {order.isFullyPaid ? 'Paid' : 'Payment pending'}
-							</span>
+							<span className={payment.tone}>· {payment.text}</span>
 						</dt>
 						<dd className="tabular text-[1.4rem] leading-none text-charcoal">{formatPrice(order.total ?? 0, currency)}</dd>
 					</div>

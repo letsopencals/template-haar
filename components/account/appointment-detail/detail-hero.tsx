@@ -1,7 +1,7 @@
 'use client';
 
 import type { AppointmentDetailResponse } from '@opencals/storefront-sdk';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { StatusBadge, appointmentBadgeStatus } from '@/components/ui/status-badge';
 import { ArchOutline } from '@/components/motifs/arch-outline';
 import { RevealArch } from '@/components/motion/reveal-arch';
 import { Reveal } from '@/components/motion/reveal';
@@ -23,7 +23,7 @@ export function DetailHero({ appointment, upcoming }: { appointment: Appointment
 			<Reveal className="min-w-0">
 				<div className="flex flex-wrap items-center gap-3">
 					<p className="eyebrow text-brass">Booking Nº {appointment.name}</p>
-					<StatusBadge kind="appointment" status={appointment.status} />
+					<StatusBadge kind="appointment" status={appointmentBadgeStatus(appointment)} />
 				</div>
 				<h2 className="display-md mt-6 text-charcoal [&_em]:text-accent">
 					{canceled ? <span className="text-warm-gray">{serviceTitle(appointment)}</span> : serviceTitle(appointment)}

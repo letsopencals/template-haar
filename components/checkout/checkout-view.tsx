@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { CustomerProviderCatalogItem } from '@opencals/storefront-sdk';
 import { useCart } from '@/contexts/cart-context';
 import { useCheckout, type CheckoutStep } from '@/contexts/checkout-context';
 import { useSmoothScroll } from '@/components/motion/smooth-scroll';
@@ -97,11 +98,11 @@ function CheckoutBody() {
 		questions,
 		answers,
 		providers,
-		selectedProvider,
+		paymentData,
 		isExpired,
 		setStep,
 		setError,
-		handleSubmitCheckout,
+		holdLost,
 	} = useCheckout();
 	const lenis = useSmoothScroll();
 
@@ -138,12 +139,11 @@ function CheckoutBody() {
 		submitting,
 		isExpired,
 		hasEmail: Boolean(email),
-		hasProviders: providers.length > 0,
-		method,
-		selectedProvider,
+		hasProviders: providers.length > 0 && !holdLost,
+		method: providers.find((p) => p.name === method),
+		cardReady: Boolean(paymentData?.clientSecret),
 		stripeProcessing,
 		total,
-		onConfirmCash: () => void handleSubmitCheckout(),
 	});
 
 	return (
@@ -199,7 +199,7 @@ function CheckoutBody() {
 								index={paymentIndex}
 								title="Payment"
 								state={current === 2 ? 'open' : 'locked'}
-								lockedHint="Card, or pay at the salon where offered."
+								lockedHint="By card, or another way the salon offers."
 							>
 								{step === 'payment' ? (
 									<PaymentStep payLabel={total} onProcessingChange={setStripeProcessing} />
@@ -231,11 +231,11 @@ interface ActionInput {
 	isExpired: boolean;
 	hasEmail: boolean;
 	hasProviders: boolean;
-	method: string | undefined;
-	selectedProvider: string | null;
+	method: CustomerProviderCatalogItem | undefined;
+	/** The card form is mounted (checkout started with an `internal` method). */
+	cardReady: boolean;
 	stripeProcessing: boolean;
 	total: string;
-	onConfirmCash: () => void;
 }
 
 /** What the mobile pay bar does at each step — mirrors the section's own submit button. */
@@ -255,12 +255,9 @@ function primaryAction(i: ActionInput): PrimaryAction | null {
 				busy: i.submitting,
 			};
 		case 'payment':
-			if (i.selectedProvider === 'stripe') {
+			if (i.cardReady) {
 				const busy = i.stripeProcessing || i.submitting;
 				return { label: busy ? 'Processing…' : `Pay ${i.total}`, form: STRIPE_FORM_ID, disabled: busy || i.isExpired, busy };
-			}
-			if (i.selectedProvider === 'cash') {
-				return { label: i.submitting ? 'Confirming…' : 'Confirm booking', onClick: i.onConfirmCash, disabled: blocked, busy: i.submitting };
 			}
 			return null;
 	}

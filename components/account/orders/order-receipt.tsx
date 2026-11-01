@@ -171,7 +171,7 @@ export function OrderReceipt({ orderId }: { orderId: string }) {
 							{order.refundedTotal > 0 ? (
 								<Line label="Refunded" value={`−${formatPrice(order.refundedTotal, currency)}`} tone="negative" />
 							) : null}
-							{order.dueToPay > 0 ? <Line label="Due at the salon" value={formatPrice(order.dueToPay, currency)} tone="warning" /> : null}
+							{order.dueToPay > 0 ? <Line label="Still to pay" value={formatPrice(order.dueToPay, currency)} tone="warning" /> : null}
 						</div>
 					</div>
 

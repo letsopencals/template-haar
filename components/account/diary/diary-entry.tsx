@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { memo } from 'react';
 import { clsx } from 'clsx';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { StatusBadge, appointmentBadgeStatus } from '@/components/ui/status-badge';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 import { serviceTitle, stylistName, variantLabel, type DiaryAppointment } from '@/components/account/appointment-utils';
 
@@ -44,11 +44,11 @@ export const DiaryEntry = memo(function DiaryEntry({ appointment, past }: { appo
 							</>
 						) : null}
 					</p>
-					<StatusBadge kind="appointment" status={appointment.status} className="mt-3 sm:hidden" />
+					<StatusBadge kind="appointment" status={appointmentBadgeStatus(appointment)} className="mt-3 sm:hidden" />
 				</div>
 
 				<div className="hidden items-center gap-6 sm:flex">
-					<StatusBadge kind="appointment" status={appointment.status} />
+					<StatusBadge kind="appointment" status={appointmentBadgeStatus(appointment)} />
 					<span aria-hidden className="text-warm-gray transition-transform duration-500 group-hover:translate-x-1 group-hover:text-accent">
 						→
 					</span>

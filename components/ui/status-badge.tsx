@@ -16,13 +16,17 @@ const APPOINTMENT: Record<string, { label: string; tone: Tone }> = {
 	confirmed: { label: 'Confirmed', tone: 'positive' },
 	completed: { label: 'Completed', tone: 'neutral' },
 	canceled: { label: 'Cancelled', tone: 'negative' },
-	pending: { label: 'Pending', tone: 'warning' },
+	// A pending booking with no reason is being confirmed right now; it reads as booked.
+	pending: { label: 'Booked', tone: 'accent' },
+	awaiting_payment: { label: 'Awaiting payment', tone: 'warning' },
+	awaiting_approval: { label: 'Awaiting confirmation', tone: 'warning' },
 };
 
 const PAYMENT: Record<string, { label: string; tone: Tone }> = {
 	paid: { label: 'Paid', tone: 'positive' },
 	unpaid: { label: 'Unpaid', tone: 'warning' },
 	'partially-paid': { label: 'Part paid', tone: 'warning' },
+	voided: { label: 'Cancelled — not charged', tone: 'neutral' },
 };
 
 const FULFILLMENT: Record<string, { label: string; tone: Tone }> = {
@@ -40,6 +44,22 @@ const REFUND: Record<string, { label: string; tone: Tone }> = {
 
 const MAPS = { appointment: APPOINTMENT, payment: PAYMENT, fulfillment: FULFILLMENT, refund: REFUND } as const;
 
+/** An unknown value never shows raw: each kind has a neutral wording for it. */
+const FALLBACK: Record<keyof typeof MAPS, string> = {
+	appointment: 'Updating',
+	payment: 'Payment pending',
+	fulfillment: 'In progress',
+	refund: 'Refund pending',
+};
+
+/**
+ * The appointment badge key: a `pending` booking shows why it waits (`awaiting_payment` /
+ * `awaiting_approval`); with no reason it's being confirmed and reads as booked.
+ */
+export function appointmentBadgeStatus(a: { status: string; pendingReason?: string | null }): string {
+	return a.status === 'pending' && a.pendingReason ? a.pendingReason : a.status;
+}
+
 /** Hairline status plate with a coloured dot. */
 export const StatusBadge = memo(function StatusBadge({
 	kind,
@@ -50,7 +70,7 @@ export const StatusBadge = memo(function StatusBadge({
 	status: string;
 	className?: string;
 }) {
-	const c = MAPS[kind][status] ?? { label: status, tone: 'neutral' as Tone };
+	const c = MAPS[kind][status] ?? { label: FALLBACK[kind], tone: 'neutral' as Tone };
 	const t = TONE[c.tone];
 	return (
 		<span

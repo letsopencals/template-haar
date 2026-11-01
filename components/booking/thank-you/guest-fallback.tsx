@@ -21,7 +21,7 @@ export function GuestFallback({ orderId }: { orderId: string | null }) {
 				Booking <em>received</em>
 			</h2>
 			<p className="mt-3 max-w-[40ch] text-sm leading-relaxed text-warm-gray">
-				A confirmation has been sent to your email. Sign in with the email you booked with to see your booking details.
+				We&rsquo;ve emailed you the details, including whether it&rsquo;s confirmed. Sign in with the email you booked with to see your booking.
 			</p>
 			<Link href={`/auth/sign-in?callbackUrl=${callbackUrl}`} className={buttonClasses({ variant: 'primary', size: 'md', className: 'mt-7' })}>
 				Sign in

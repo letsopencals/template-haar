@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { buttonClasses } from '@/components/ui/button';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { StatusBadge, appointmentBadgeStatus } from '@/components/ui/status-badge';
 import { ArchOutline } from '@/components/motifs/arch-outline';
 import { Reveal } from '@/components/motion/reveal';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
@@ -71,7 +71,7 @@ export function NextVisit({ appointment, now }: { appointment: DiaryAppointment;
 					</dl>
 
 					<div className="mt-8 flex flex-wrap items-center gap-3">
-						<StatusBadge kind="appointment" status={appointment.status} />
+						<StatusBadge kind="appointment" status={appointmentBadgeStatus(appointment)} />
 						<span className="tabular text-xs text-warm-gray">Nº {appointment.name}</span>
 					</div>
 

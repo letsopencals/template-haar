@@ -39,7 +39,10 @@ export function DiaryView() {
 		const all = (data ?? []).flatMap((p) => p.data ?? []);
 		// Dedupe (pages can shift as bookings change) and sort client-side too.
 		const seen = new Set<string>();
-		const list = all.filter((a) => (seen.has(a.id) ? false : (seen.add(a.id), true)));
+		const list = all
+			// A pending appointment with no order is a cart hold, not a booking: it expires with the cart.
+			.filter((a) => !(a.status === 'pending' && !a.orderLineItem))
+			.filter((a) => (seen.has(a.id) ? false : (seen.add(a.id), true)));
 		if (now === null) return { next: null, upcoming: [], past: [] };
 		const future = list
 			.filter((a) => isUpcoming(a, now))

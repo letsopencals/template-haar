@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic';
 import { useCheckout } from '@/contexts/checkout-context';
-import { Button } from '@/components/ui/button';
 
 // StripePayment pulls in Stripe (@stripe/react-stripe-js + stripe-js), which is
 // heavy and only needed on the final step — load it on demand.
@@ -17,15 +16,16 @@ interface PaymentStepProps {
 	onProcessingChange: (processing: boolean) => void;
 }
 
-/** 03 — Payment, once a method is started: the Stripe element (or a cash confirm). */
+/**
+ * 03 — Payment, once a card method is started: the Stripe element. Every other method (pay at the salon, bank
+ * transfer, invoice, nothing to pay) places the booking straight after start and never reaches this step.
+ */
 export function PaymentStep({ payLabel, onProcessingChange }: PaymentStepProps) {
-	const { selectedProvider, paymentData, submitting, isExpired, setStep, setError, handleSubmitCheckout } = useCheckout();
-
-	if (!paymentData) return null;
+	const { paymentData, submitting, isExpired, setStep, setError, handleSubmitCheckout } = useCheckout();
 
 	return (
 		<div className="space-y-6">
-			{selectedProvider === 'stripe' && paymentData.clientSecret ? (
+			{paymentData?.clientSecret ? (
 				<StripePayment
 					clientSecret={paymentData.clientSecret}
 					stripeAccountId={paymentData.stripeAccountId}
@@ -36,25 +36,16 @@ export function PaymentStep({ payLabel, onProcessingChange }: PaymentStepProps) 
 					payLabel={payLabel}
 					onProcessingChange={onProcessingChange}
 				/>
-			) : selectedProvider === 'cash' ? (
-				<div className="border border-line bg-paper p-6">
-					<p className="font-display text-[1.3rem] text-charcoal">Pay at the salon</p>
-					<p className="mt-2 text-sm text-warm-gray">We&rsquo;ll hold your chair; settle up at the desk after your visit.</p>
-					<Button
-						variant="primary"
-						size="lg"
-						className="mt-6"
-						onClick={() => handleSubmitCheckout()}
-						disabled={submitting || isExpired}
-					>
-						{submitting ? 'Confirming…' : 'Confirm booking'}
-					</Button>
-				</div>
-			) : null}
+			) : (
+				<p className="text-sm text-warm-gray">The card form isn&rsquo;t ready. Choose another way to pay, or try again.</p>
+			)}
 
 			<button
 				type="button"
-				onClick={() => setStep('payment-select')}
+				onClick={() => {
+					setError(null);
+					setStep('payment-select');
+				}}
 				disabled={submitting}
 				className="link-underline text-xs text-warm-gray hover:text-charcoal focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:opacity-40"
 			>

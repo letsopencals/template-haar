@@ -5,7 +5,7 @@ import { siteConfig } from '@/lib/site-config';
 /** The fields the diary and detail views share (list items and the detail response both fit). */
 export type DiaryAppointment = Pick<
 	AppointmentListItemResponse,
-	'id' | 'name' | 'from' | 'to' | 'status' | 'displayAddress' | 'productId' | 'staffMemberId' | 'locationId'
+	'id' | 'name' | 'from' | 'to' | 'status' | 'pendingReason' | 'displayAddress' | 'productId' | 'staffMemberId' | 'locationId'
 > & {
 	product: Pick<
 		AppointmentListItemResponse['product'],

@@ -1,15 +1,17 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn as nextAuthSignIn } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 import { useCart } from '@/contexts/cart-context';
 import { usePaymentProviders } from '@/hooks/use-payment-providers';
 import { useCheckoutQuestions } from '@/hooks/use-checkout-questions';
+import { rememberCheckout } from '@/lib/checkout-outcome';
 import type {
 	CustomerProviderCatalogItem,
 	CheckoutStartResponse,
+	CheckoutResponse,
 	SubmitCheckout,
 	CartItem,
 	CheckoutQuestionResponse as CheckoutQuestion,
@@ -25,12 +27,43 @@ function isNoPaymentRequired(provider: string): boolean {
 	return provider === NO_PAYMENT_REQUIRED_PROVIDER;
 }
 
+/** The API names checkout conflicts with a `code`; it picks the wording, the salon's voice writes it. */
+const CONFLICT_COPY: Record<string, string> = {
+	CART_EXPIRED: 'Your hold lapsed and that time has since been taken. Choose another time and we’ll hold it for you.',
+	PAYMENT_NOT_AUTHORIZED: 'Your card wasn’t authorised, so nothing was booked or charged. Try again, or use another card.',
+	CHECKOUT_IN_PROGRESS: 'We’re still finishing your booking. Give it a moment and try again.',
+};
+/** CHECKOUT_IN_PROGRESS means a twin request (double click, second tab) is still running: wait, then retry. */
+const BUSY_RETRIES = 4;
+const BUSY_PAUSE_MS = 1500;
+
+class CheckoutConflict extends Error {
+	constructor(
+		message: string,
+		readonly code?: string,
+		readonly orderId?: string,
+	) {
+		super(message);
+	}
+}
+
+async function failureOf(res: Response, fallback: string): Promise<CheckoutConflict> {
+	try {
+		const data = (await res.json()) as { error?: string; code?: string; orderId?: string };
+		return new CheckoutConflict((data.code && CONFLICT_COPY[data.code]) || data.error || fallback, data.code, data.orderId);
+	} catch {
+		return new CheckoutConflict(fallback);
+	}
+}
+
 interface CheckoutContextValue {
 	// State
 	step: CheckoutStep;
 	error: string | null;
 	submitting: boolean;
 	checkoutComplete: boolean;
+	/** The held time was taken while the hold had lapsed (CART_EXPIRED): pick a new one. */
+	holdLost: boolean;
 
 	// Customer
 	email: string;
@@ -66,6 +99,8 @@ interface CheckoutContextValue {
 	handleStartCheckout: (providerName: string) => Promise<void>;
 	handleSubmitCheckout: (stripePaymentIntentId?: string) => Promise<void>;
 	extendCart: () => void;
+	/** Drops the card and returns to The Menu to choose a new time. */
+	startOver: () => void;
 }
 
 const CheckoutContext = createContext<CheckoutContextValue | undefined>(undefined);
@@ -79,6 +114,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 	const [error, setError] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	const [checkoutComplete, setCheckoutComplete] = useState(false);
+	const [holdLost, setHoldLost] = useState(false);
 
 	// Customer info
 	const [email, setEmail] = useState('');
@@ -108,6 +144,8 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 	// Payment
 	const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 	const [paymentData, setPaymentData] = useState<CheckoutStartResponse | null>(null);
+	// Read by submit within the same call as start, where state would still be stale.
+	const providerRef = useRef<string | null>(null);
 
 	// Redirect if no cart — but only once CartProvider has read the stored cart id
 	// from localStorage. Before that cartId is always null, so a hard reload of
@@ -199,12 +237,77 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		[answers, cartHeaders],
 	);
 
-	// Step 3: Start checkout with selected provider
+	/** POSTs a checkout call; waits out CHECKOUT_IN_PROGRESS, throws a CheckoutConflict on anything else. */
+	const post = useCallback(
+		async <T,>(url: string, body: unknown, fallback: string): Promise<T> => {
+			for (let attempt = 0; ; attempt++) {
+				const res = await fetch(url, { method: 'POST', headers: cartHeaders(), body: JSON.stringify(body) });
+				if (res.ok) return (await res.json()) as T;
+				const failure = await failureOf(res, fallback);
+				if (failure.code !== 'CHECKOUT_IN_PROGRESS' || attempt >= BUSY_RETRIES) throw failure;
+				await new Promise((r) => setTimeout(r, BUSY_PAUSE_MS));
+			}
+		},
+		[cartHeaders],
+	);
+
+	// Every failure path lands here, so the spinner and the back link are never left disabled.
+	const fail = useCallback((err: unknown) => {
+		if (err instanceof CheckoutConflict && err.code === 'CART_EXPIRED') setHoldLost(true);
+		setError(err instanceof Error ? err.message : 'An error occurred');
+		setSubmitting(false);
+	}, []);
+
+	const goToThankYou = useCallback(
+		(orderId: string) => {
+			setCheckoutComplete(true);
+			clearCart();
+			router.push(`/thank-you?orderId=${orderId}`);
+		},
+		[clearCart, router],
+	);
+
+	const placeOrder = useCallback(
+		async (stripePaymentIntentId?: string) => {
+			const submitPayload: SubmitCheckout = {};
+			if (stripePaymentIntentId) submitPayload.stripePaymentIntentId = stripePaymentIntentId;
+			const data = await post<CheckoutResponse>('/api/checkout/submit', submitPayload, 'Checkout failed');
+
+			// Auto-authenticate customer if tokens returned
+			if (data.auth?.accessToken) {
+				await nextAuthSignIn('checkout-token', {
+					accessToken: data.auth.accessToken,
+					refreshToken: data.auth.refreshToken,
+					redirect: false,
+				});
+			}
+			rememberCheckout(data, providerRef.current);
+			goToThankYou(data.order?.id ?? '');
+		},
+		[post, goToThankYou],
+	);
+
+	// Step 4: Submit checkout (after the card is confirmed, or straight after start for every other method)
+	const handleSubmitCheckout = useCallback(
+		async (stripePaymentIntentId?: string) => {
+			setError(null);
+			setSubmitting(true);
+			try {
+				await placeOrder(stripePaymentIntentId);
+			} catch (err: unknown) {
+				fail(err);
+			}
+		},
+		[placeOrder, fail],
+	);
+
+	// Step 3: Start checkout with the selected provider, then route on how it collects payment
 	const handleStartCheckout = useCallback(
 		async (providerName: string) => {
 			setError(null);
 			setSubmitting(true);
 			setSelectedProvider(providerName);
+			providerRef.current = providerName;
 
 			try {
 				const startPayload: Record<string, unknown> = { provider: providerName };
@@ -212,84 +315,51 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 					startPayload.customer = { kind: 'existing', customerId };
 				}
 
-				const res = await fetch('/api/checkout/start', {
-					method: 'POST',
-					headers: cartHeaders(),
-					body: JSON.stringify(startPayload),
-				});
-
-				if (!res.ok) {
-					const data = await res.json();
-					throw new Error(data.error || 'Failed to start checkout');
+				let data: CheckoutStartResponse;
+				try {
+					data = await post<CheckoutStartResponse>('/api/checkout/start', startPayload, 'Failed to start checkout');
+				} catch (err) {
+					if (!(err instanceof CheckoutConflict) || err.code !== 'CART_ALREADY_CHECKED_OUT') throw err;
+					// This card is already an order (second tab, lost response): submit answers with that order.
+					try {
+						await placeOrder();
+					} catch {
+						if (!err.orderId) throw err;
+						goToThankYou(err.orderId);
+					}
+					return;
 				}
-
-				const data: CheckoutStartResponse = await res.json();
 				setPaymentData(data);
 
-				// Key off the RESPONSE provider: when nothing is collectible the backend overrides the
-				// requested provider (e.g. Stripe) with "no payment required" — confirm it immediately, like cash.
-				if (providerName === 'cash' || isNoPaymentRequired(data.provider)) {
-					await handleSubmitCheckout();
+				// `checkoutMode` decides: `internal` mounts the card form, `redirect` hands over to the provider,
+				// `manual` (pay at the salon, bank transfer, invoice) and `none` place the order now. The backend
+				// may also swap in "no payment required" when nothing is collectible.
+				const mode = providers.find((p) => p.name === providerName)?.checkoutMode;
+				if (isNoPaymentRequired(data.provider as string) || mode === 'manual' || mode === 'none') {
+					await placeOrder();
 				} else if (data.redirectUrl) {
 					window.location.href = data.redirectUrl;
-				} else {
+				} else if (data.clientSecret) {
 					setStep('payment');
+					setSubmitting(false);
+				} else if (!mode) {
+					// A method this site doesn't know, with nothing to mount: place it like a manual one.
+					await placeOrder();
+				} else {
+					throw new CheckoutConflict('Card payment couldn’t start. Please try again or choose another way to pay.');
 				}
 			} catch (err: unknown) {
-				setError(err instanceof Error ? err.message : 'An error occurred');
-				setSubmitting(false);
+				fail(err);
 			}
 		},
-		[cartHeaders, customerId], // eslint-disable-line react-hooks/exhaustive-deps
+		[customerId, post, providers, placeOrder, goToThankYou, fail],
 	);
 
-	// Step 4: Submit checkout
-	const handleSubmitCheckout = useCallback(
-		async (stripePaymentIntentId?: string) => {
-			setError(null);
-			setSubmitting(true);
-
-			try {
-				const submitPayload: SubmitCheckout = {
-					appointmentsSettings: { markAsScheduled: true },
-				};
-
-				if (stripePaymentIntentId) {
-					submitPayload.stripePaymentIntentId = stripePaymentIntentId;
-				}
-
-				const res = await fetch('/api/checkout/submit', {
-					method: 'POST',
-					headers: cartHeaders(),
-					body: JSON.stringify(submitPayload),
-				});
-
-				if (!res.ok) {
-					const data = await res.json();
-					throw new Error(data.error || 'Checkout failed');
-				}
-
-				const data = await res.json();
-
-				// Auto-authenticate customer if tokens returned
-				if (data.auth?.accessToken) {
-					await nextAuthSignIn('checkout-token', {
-						accessToken: data.auth.accessToken,
-						refreshToken: data.auth.refreshToken,
-						redirect: false,
-					});
-				}
-
-				setCheckoutComplete(true);
-				clearCart();
-				router.push(`/thank-you?orderId=${data.order?.id ?? ''}`);
-			} catch (err: unknown) {
-				setError(err instanceof Error ? err.message : 'An error occurred');
-				setSubmitting(false);
-			}
-		},
-		[cartHeaders, clearCart, router],
-	);
+	const startOver = useCallback(() => {
+		setCheckoutComplete(true);
+		clearCart();
+		router.push('/services');
+	}, [clearCart, router]);
 
 	const items = useMemo(() => (cart?.items ?? []) as CartItem[], [cart?.items]);
 	const isExpired = timeRemaining !== null && timeRemaining <= 0;
@@ -304,6 +374,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 			error,
 			submitting,
 			checkoutComplete,
+			holdLost,
 			email,
 			firstName,
 			lastName,
@@ -329,12 +400,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 			handleStartCheckout,
 			handleSubmitCheckout,
 			extendCart,
+			startOver,
 		}),
 		[
 			step,
 			error,
 			submitting,
 			checkoutComplete,
+			holdLost,
 			email,
 			firstName,
 			lastName,
@@ -354,6 +427,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 			handleStartCheckout,
 			handleSubmitCheckout,
 			extendCart,
+			startOver,
 		],
 	);
 
