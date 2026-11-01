@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import useSWR from 'swr';
-import type { CollectionMeta, OrderListItemResponse } from '@opencals/storefront-sdk';
+import type { OrderListItemResponse, OrderListResponse } from '@opencals/storefront-sdk';
 import { fetcher } from '@/lib/fetcher';
 import { formatPrice } from '@/lib/format';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
@@ -13,7 +13,7 @@ import { Notice } from '@/components/auth/auth-feedback';
 import { ListSkeleton } from '@/components/account/skeletons';
 import { DiaryEmpty } from '@/components/account/diary/diary-empty';
 
-type Page = { data: OrderListItemResponse[]; meta: CollectionMeta };
+type Page = OrderListResponse;
 
 const PAGE_SIZE = 10;
 const SWR_OPTIONS = { revalidateOnFocus: false, keepPreviousData: true } as const;

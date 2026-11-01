@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 export function handleApiError(err: unknown, fallbackMessage = 'Internal server error') {
 	if (err instanceof OpencalsApiError) {
 		// Checkout conflicts carry `orderId` (CART_ALREADY_CHECKED_OUT), unauthorised cards `paymentStatus`.
-		const body = ((err as { body?: Record<string, unknown> }).body ?? {}) as { orderId?: unknown; paymentStatus?: unknown };
+		const body = err.body ?? {};
 		const fieldErrors = err.toFieldErrors();
 		return NextResponse.json(
 			{

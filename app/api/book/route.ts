@@ -1,32 +1,18 @@
 import '@/lib/opencals';
-import { AppointmentService, CartService } from '@opencals/storefront-sdk';
+import { AppointmentService, CartService, type CreateAppointment } from '@opencals/storefront-sdk';
 import { getAccessToken } from '@/lib/api-auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api-error-handler';
 
-interface AddOnSelection {
-	addOnId: string;
-	quantity?: number;
-}
+/** What the browser sends: the slot, party size and add-ons, in the SDK's create-appointment shapes. */
+type BookInput = Pick<CreateAppointment, 'slot' | 'numberOfAttendees' | 'addOns'>;
 
 export async function POST(request: NextRequest) {
 	const cartIdHeader = request.headers.get('X-Cart-Id') ?? '';
 
 	try {
 		const body = await request.json();
-		const { slot, numberOfAttendees, addOns } = body as {
-			slot: {
-				productId: string;
-				fromDate: string;
-				fromTime: string;
-				toDate: string;
-				toTime: string;
-				staffMemberId?: string | null;
-				locationId?: string | null;
-			};
-			numberOfAttendees?: number;
-			addOns?: AddOnSelection[];
-		};
+		const { slot, numberOfAttendees, addOns } = body as BookInput;
 
 		if (!slot?.productId || !slot?.fromDate || !slot?.fromTime || !slot?.toDate || !slot?.toTime) {
 			return NextResponse.json(

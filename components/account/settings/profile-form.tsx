@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
+import type { SelfServiceProfileResponse } from '@opencals/storefront-sdk';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useSession } from 'next-auth/react';
@@ -14,7 +15,7 @@ import { fetcher } from '@/lib/fetcher';
 import { FIELD_LABEL, FORM_LABEL, Notice } from '@/components/auth/auth-feedback';
 import { SettingsSection } from '@/components/account/settings/settings-section';
 
-type Profile = { firstName?: string | null; lastName?: string | null; email?: string | null };
+type Profile = Partial<Pick<SelfServiceProfileResponse, 'firstName' | 'lastName' | 'email'>>;
 
 const SWR_OPTIONS = { revalidateOnFocus: false } as const;
 

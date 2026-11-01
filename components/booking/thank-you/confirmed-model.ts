@@ -26,7 +26,7 @@ export interface ConfirmedAppointment {
 	directionsHref: string | null;
 	/** Join link for online locations. */
 	onlineLink: string | null;
-	status: string;
+	status: OrderDetailAppointment['status'];
 	attendees: number;
 	addOns: { id: string; title: string; quantity: number }[];
 	event: CalendarEvent;

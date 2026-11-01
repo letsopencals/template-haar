@@ -2,7 +2,6 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { CartResponse as Cart } from '@opencals/storefront-sdk';
-import type { CartWithDiscounts } from '@/types/discount';
 import { useCartExpiry } from '@/hooks/use-cart-expiry';
 
 const CART_ID_KEY = '@opencals/cart';
@@ -13,7 +12,7 @@ export interface DiscountCodeError {
 }
 
 interface CartContextValue {
-	cart: CartWithDiscounts | null;
+	cart: Cart | null;
 	cartId: string | null;
 	loading: boolean;
 	/** True once the stored cart id has been read from localStorage (client mount). Gate "no cart" redirects on it. */
@@ -23,7 +22,7 @@ interface CartContextValue {
 	/** Fetch or create cart */
 	refreshCart: () => Promise<void>;
 	/** Set cart after booking (saves ID to localStorage) */
-	setCart: (cart: Cart | CartWithDiscounts) => void;
+	setCart: (cart: Cart) => void;
 	/** Remove an item from cart */
 	removeItem: (itemId: string) => Promise<void>;
 	/** Update an add-on item's quantity */
@@ -57,7 +56,7 @@ function getCartHeaders(cartId: string | null): Record<string, string> {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-	const [cart, setCartState] = useState<CartWithDiscounts | null>(null);
+	const [cart, setCartState] = useState<Cart | null>(null);
 	const [cartId, setCartId] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [isLoaded, setIsLoaded] = useState(false);
@@ -110,13 +109,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 		}
 	}, [cartId]);
 
-	const setCart = useCallback((newCart: Cart | CartWithDiscounts) => {
+	const setCart = useCallback((newCart: Cart) => {
 		const id = newCart.id;
 		if (id) {
 			localStorage.setItem(CART_ID_KEY, id);
 			setCartId(id);
 		}
-		setCartState(newCart as CartWithDiscounts);
+		setCartState(newCart);
 	}, []);
 
 	const removeItem = useCallback(

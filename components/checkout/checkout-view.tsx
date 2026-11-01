@@ -106,7 +106,7 @@ function CheckoutBody() {
 	} = useCheckout();
 	const lenis = useSmoothScroll();
 
-	const [chosen, setChosen] = useState<string | undefined>();
+	const [chosen, setChosen] = useState<CustomerProviderCatalogItem['name'] | undefined>();
 	const method = chosen && providers.some((p) => p.name === chosen) ? chosen : providers[0]?.name;
 	const [stripeProcessing, setStripeProcessing] = useState(false);
 

@@ -1,12 +1,11 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { CartItem } from '@opencals/storefront-sdk';
+import type { CartItem, CartResponse } from '@opencals/storefront-sdk';
 import { useDateFormatter } from '@/hooks/use-date-formatter';
 import { useSettings } from '@/contexts/settings-context';
 import { getProductImage } from '@/lib/format';
 import { getStaffImageUrl, getStaffName } from '@/lib/staff-utils';
-import type { CartWithDiscounts } from '@/types/discount';
 
 export interface CartAddOnLine {
 	id: string;
@@ -67,12 +66,12 @@ export function toCartLine(item: CartItem): CartLine {
 	};
 }
 
-export function useCartLines(cart: CartWithDiscounts | null): CartLine[] {
+export function useCartLines(cart: CartResponse | null): CartLine[] {
 	return useMemo(() => (cart?.items ?? []).map((i) => toCartLine(i as CartItem)), [cart]);
 }
 
 /** Pre-discount subtotal of every service + add-on line. */
-export function cartSubtotal(cart: CartWithDiscounts | null): number {
+export function cartSubtotal(cart: CartResponse | null): number {
 	return (cart?.items ?? []).reduce((sum, item) => {
 		const addOns = (item.addOnItems ?? []).reduce((a, ao) => a + (ao.originalSubtotal ?? 0), 0);
 		return sum + (item.originalSubtotal ?? item.originalUnitPrice ?? 0) + addOns;

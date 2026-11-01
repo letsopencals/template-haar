@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import useSWRInfinite from 'swr/infinite';
-import type { AppointmentListItemResponse, CollectionMeta } from '@opencals/storefront-sdk';
+import type { AppointmentListResponse } from '@opencals/storefront-sdk';
 import { fetcher } from '@/lib/fetcher';
 import { useNow } from '@/hooks/use-now';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { DiaryEmpty } from '@/components/account/diary/diary-empty';
 import { DiarySkeleton } from '@/components/account/skeletons';
 import { isUpcoming } from '@/components/account/appointment-utils';
 
-type Page = { data: AppointmentListItemResponse[]; meta: CollectionMeta };
+type Page = AppointmentListResponse;
 
 const PAGE_SIZE = 20;
 const SWR_OPTIONS = { revalidateOnFocus: false, revalidateFirstPage: false } as const;

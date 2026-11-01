@@ -1,6 +1,12 @@
 'use client';
 
-import type { CheckoutResponse, PaymentInstructions, StorefrontAppointmentPendingReason } from '@opencals/storefront-sdk';
+import type {
+	AppointmentStatusType,
+	CheckoutOrder,
+	CheckoutResponse,
+	PaymentInstructions,
+	StorefrontAppointmentPendingReason,
+} from '@opencals/storefront-sdk';
 
 /**
  * What checkout submit answered, kept for the thank-you page in sessionStorage. Guests can't read the order
@@ -11,8 +17,8 @@ export interface CheckoutMemo {
 	orderName: string | null;
 	savedAt: number;
 	/** The method the guest chose (provider name). */
-	provider: string | null;
-	paymentStatus: string | null;
+	provider: PaymentInstructions['provider'] | null;
+	paymentStatus: CheckoutOrder['paymentStatus'] | null;
 	dueAt: string | null;
 	instructions: PaymentInstructions | null;
 	/** Why the booking waits, if it does (see `waitingReason`). */
@@ -28,7 +34,7 @@ const MAX_AGE = 6 * 60 * 60 * 1000;
  * is confirmed in the background. Payment comes before approval.
  */
 export function waitingReason(
-	appointments: ReadonlyArray<{ status: string; pendingReason?: StorefrontAppointmentPendingReason | null } | null | undefined>,
+	appointments: ReadonlyArray<{ status: AppointmentStatusType; pendingReason?: StorefrontAppointmentPendingReason | null } | null | undefined>,
 ): StorefrontAppointmentPendingReason | null {
 	const reasons = appointments.filter((a) => a?.status === 'pending').map((a) => a?.pendingReason ?? null);
 	if (reasons.includes('awaiting_payment')) return 'awaiting_payment';

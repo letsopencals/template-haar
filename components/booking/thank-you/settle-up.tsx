@@ -7,7 +7,7 @@ import { buttonClasses } from '@/components/ui/button';
 
 interface SettleUpProps {
 	/** Provider name of the method chosen at checkout (when still known). */
-	provider: string | null;
+	provider: PaymentInstructions['provider'] | null;
 	instructions: PaymentInstructions | null;
 	dueAt: string | null;
 	/** Order number, the transfer reference. */

@@ -29,7 +29,7 @@ const STAMP: Record<'confirmed' | StorefrontAppointmentPendingReason, { ring: st
 	awaiting_approval: { ring: 'Received · Awaiting confirmation · ', title: 'Awaiting confirmation' },
 };
 
-const PAID_LABEL: Record<string, { text: string; tone: string }> = {
+const PAID_LABEL: Partial<Record<OrderDetailResponse['paymentStatus'], { text: string; tone: string }>> = {
 	paid: { text: 'Paid', tone: 'text-emerald-800' },
 	voided: { text: 'Cancelled — not charged', tone: 'text-warm-gray' },
 };

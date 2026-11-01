@@ -26,8 +26,8 @@ export function methodActionLabel(provider: Pick<CustomerProviderCatalogItem, 'n
 }
 
 interface PaymentMethodsProps {
-	method: string | undefined;
-	onMethodChange: (name: string) => void;
+	method: CustomerProviderCatalogItem['name'] | undefined;
+	onMethodChange: (name: CustomerProviderCatalogItem['name']) => void;
 }
 
 /**
@@ -88,7 +88,7 @@ interface MethodCardProps {
 	index: number;
 	checked: boolean;
 	disabled: boolean;
-	onSelect: (name: string) => void;
+	onSelect: (name: CustomerProviderCatalogItem['name']) => void;
 }
 
 function MethodCard({ provider, index, checked, disabled, onSelect }: MethodCardProps) {
@@ -140,7 +140,7 @@ function MethodCard({ provider, index, checked, disabled, onSelect }: MethodCard
  * displayName/description are written for merchants ("Record cash payments
  * collected outside the system"), so they're only a fallback for unknown ones.
  */
-function customerTitle(name: string): string | undefined {
+function customerTitle(name: CustomerProviderCatalogItem['name']): string | undefined {
 	switch (name) {
 		case 'stripe':
 			return 'Card';
@@ -157,7 +157,7 @@ function customerTitle(name: string): string | undefined {
 	}
 }
 
-function customerCopy(name: string): string | undefined {
+function customerCopy(name: CustomerProviderCatalogItem['name']): string | undefined {
 	switch (name) {
 		case 'stripe':
 			return 'Card, Apple Pay or Google Pay — paid securely now.';

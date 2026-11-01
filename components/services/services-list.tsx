@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import type { ProductListItemResponse as Product } from '@opencals/storefront-sdk';
+import type { ProductListItemResponse as Product, ProductListResponse } from '@opencals/storefront-sdk';
 import { useLocation } from '@/contexts/location-context';
 import { useSettings } from '@/contexts/settings-context';
 import { useSmoothScroll } from '@/components/motion/smooth-scroll';
@@ -13,10 +13,6 @@ import { MenuRow } from './menu-row';
 import { MenuIndex } from './menu-index';
 import { MenuHoverPreview } from './menu-hover-preview';
 import { sortedVariants } from './menu-utils';
-
-interface ProductListResponse {
-	data?: Product[];
-}
 
 interface ServicesListProps {
 	initialProducts: Product[];
@@ -37,7 +33,7 @@ export function ServicesList({ initialProducts, staffId = null }: ServicesListPr
 	if (selectedLocationId) params.set('locationId', selectedLocationId);
 	const key = `/api/products?${params.toString()}`;
 
-	const { data, error, isLoading } = useSWR<ProductListResponse>(key, fetcher, {
+	const { data, error, isLoading } = useSWR<Partial<ProductListResponse>>(key, fetcher, {
 		fallbackData: selectedLocationId ? undefined : { data: initialProducts },
 		revalidateOnFocus: false,
 		onError: () => {

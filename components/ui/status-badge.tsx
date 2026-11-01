@@ -1,7 +1,9 @@
 import { memo } from 'react';
 import { clsx } from 'clsx';
+import type { AppointmentStatusType, OrderDetailResponse, StorefrontAppointmentPendingReason } from '@opencals/storefront-sdk';
 
 type Tone = 'accent' | 'positive' | 'neutral' | 'warning' | 'negative';
+type Entry = { label: string; tone: Tone };
 
 const TONE: Record<Tone, { text: string; dot: string }> = {
 	accent: { text: 'text-accent-dark', dot: 'bg-accent' },
@@ -11,7 +13,8 @@ const TONE: Record<Tone, { text: string; dot: string }> = {
 	negative: { text: 'text-red-700', dot: 'bg-red-500' },
 };
 
-const APPOINTMENT: Record<string, { label: string; tone: Tone }> = {
+/** `confirmed` is kept for older data. */
+const APPOINTMENT: Record<AppointmentStatusType | StorefrontAppointmentPendingReason | 'confirmed', Entry> = {
 	scheduled: { label: 'Booked', tone: 'accent' },
 	confirmed: { label: 'Confirmed', tone: 'positive' },
 	completed: { label: 'Completed', tone: 'neutral' },
@@ -22,27 +25,33 @@ const APPOINTMENT: Record<string, { label: string; tone: Tone }> = {
 	awaiting_approval: { label: 'Awaiting confirmation', tone: 'warning' },
 };
 
-const PAYMENT: Record<string, { label: string; tone: Tone }> = {
+const PAYMENT: Record<OrderDetailResponse['paymentStatus'], Entry> = {
 	paid: { label: 'Paid', tone: 'positive' },
 	unpaid: { label: 'Unpaid', tone: 'warning' },
 	'partially-paid': { label: 'Part paid', tone: 'warning' },
 	voided: { label: 'Cancelled — not charged', tone: 'neutral' },
 };
 
-const FULFILLMENT: Record<string, { label: string; tone: Tone }> = {
+const FULFILLMENT: Record<OrderDetailResponse['fulfillmentStatus'], Entry> = {
 	fulfilled: { label: 'Fulfilled', tone: 'positive' },
 	unfulfilled: { label: 'Unfulfilled', tone: 'neutral' },
 	'partially-fulfilled': { label: 'Part fulfilled', tone: 'warning' },
 };
 
-const REFUND: Record<string, { label: string; tone: Tone }> = {
+const REFUND: Record<OrderDetailResponse['refundStatus'], Entry> = {
 	'refund-owed': { label: 'Refund owed', tone: 'negative' },
 	'partially-refunded': { label: 'Part refunded', tone: 'warning' },
 	'fully-refunded': { label: 'Refunded', tone: 'negative' },
 	unrefunded: { label: 'Not refunded', tone: 'neutral' },
 };
 
-const MAPS = { appointment: APPOINTMENT, payment: PAYMENT, fulfillment: FULFILLMENT, refund: REFUND } as const;
+/** Looked up by any string: a status the API adds later falls back to the neutral wording below. */
+const MAPS: Record<'appointment' | 'payment' | 'fulfillment' | 'refund', Partial<Record<string, Entry>>> = {
+	appointment: APPOINTMENT,
+	payment: PAYMENT,
+	fulfillment: FULFILLMENT,
+	refund: REFUND,
+};
 
 /** An unknown value never shows raw: each kind has a neutral wording for it. */
 const FALLBACK: Record<keyof typeof MAPS, string> = {
@@ -56,7 +65,10 @@ const FALLBACK: Record<keyof typeof MAPS, string> = {
  * The appointment badge key: a `pending` booking shows why it waits (`awaiting_payment` /
  * `awaiting_approval`); with no reason it's being confirmed and reads as booked.
  */
-export function appointmentBadgeStatus(a: { status: string; pendingReason?: string | null }): string {
+export function appointmentBadgeStatus(a: {
+	status: AppointmentStatusType;
+	pendingReason?: StorefrontAppointmentPendingReason | null;
+}): AppointmentStatusType | StorefrontAppointmentPendingReason {
 	return a.status === 'pending' && a.pendingReason ? a.pendingReason : a.status;
 }
 

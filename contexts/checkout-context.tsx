@@ -10,8 +10,10 @@ import { useCheckoutQuestions } from '@/hooks/use-checkout-questions';
 import { rememberCheckout } from '@/lib/checkout-outcome';
 import type {
 	CustomerProviderCatalogItem,
+	CheckoutCustomer,
 	CheckoutStartResponse,
 	CheckoutResponse,
+	StartCheckout,
 	SubmitCheckout,
 	CartItem,
 	CheckoutQuestionResponse as CheckoutQuestion,
@@ -19,12 +21,13 @@ import type {
 
 export type CheckoutStep = 'customer' | 'questions' | 'payment-select' | 'payment';
 
+/** A payment method's provider name. */
+type ProviderName = CustomerProviderCatalogItem['name'];
+
 // The backend can override the requested provider with the "no payment required" fallback when nothing
-// is collectible. This template's pinned SDK union predates that value, so accept a widened string here
-// (no `as` assertion; SDK types stay authoritative) and compare against the known fallback name.
-const NO_PAYMENT_REQUIRED_PROVIDER = 'no_payment_required';
-function isNoPaymentRequired(provider: string): boolean {
-	return provider === NO_PAYMENT_REQUIRED_PROVIDER;
+// is collectible.
+function isNoPaymentRequired(provider: CheckoutStartResponse['provider']): boolean {
+	return provider === 'no_payment_required';
 }
 
 /** The API names checkout conflicts with a `code`; it picks the wording, the salon's voice writes it. */
@@ -81,7 +84,7 @@ interface CheckoutContextValue {
 
 	// Payment
 	providers: CustomerProviderCatalogItem[];
-	selectedProvider: string | null;
+	selectedProvider: ProviderName | null;
 	paymentData: CheckoutStartResponse | null;
 
 	// Cart info
@@ -96,7 +99,7 @@ interface CheckoutContextValue {
 	setError: (error: string | null) => void;
 	handleSaveCustomer: (e: React.FormEvent) => Promise<void>;
 	handleSaveAnswers: (e: React.FormEvent) => Promise<void>;
-	handleStartCheckout: (providerName: string) => Promise<void>;
+	handleStartCheckout: (providerName: ProviderName) => Promise<void>;
 	handleSubmitCheckout: (stripePaymentIntentId?: string) => Promise<void>;
 	extendCart: () => void;
 	/** Drops the card and returns to The Menu to choose a new time. */
@@ -142,10 +145,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 	const [answers, setAnswers] = useState<Record<string, string>>({});
 
 	// Payment
-	const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+	const [selectedProvider, setSelectedProvider] = useState<ProviderName | null>(null);
 	const [paymentData, setPaymentData] = useState<CheckoutStartResponse | null>(null);
 	// Read by submit within the same call as start, where state would still be stale.
-	const providerRef = useRef<string | null>(null);
+	const providerRef = useRef<ProviderName | null>(null);
 
 	// Redirect if no cart — but only once CartProvider has read the stored cart id
 	// from localStorage. Before that cartId is always null, so a hard reload of
@@ -172,7 +175,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 			setSubmitting(true);
 
 			try {
-				const customerPayload = customerId
+				const customerPayload: CheckoutCustomer = customerId
 					? { customer: { kind: 'existing', customerId } }
 					: { customer: { kind: 'new', email, firstName: firstName || undefined, lastName: lastName || undefined } };
 
@@ -303,14 +306,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
 	// Step 3: Start checkout with the selected provider, then route on how it collects payment
 	const handleStartCheckout = useCallback(
-		async (providerName: string) => {
+		async (providerName: ProviderName) => {
 			setError(null);
 			setSubmitting(true);
 			setSelectedProvider(providerName);
 			providerRef.current = providerName;
 
 			try {
-				const startPayload: Record<string, unknown> = { provider: providerName };
+				const startPayload: StartCheckout = { provider: providerName };
 				if (customerId) {
 					startPayload.customer = { kind: 'existing', customerId };
 				}
@@ -335,7 +338,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 				// `manual` (pay at the salon, bank transfer, invoice) and `none` place the order now. The backend
 				// may also swap in "no payment required" when nothing is collectible.
 				const mode = providers.find((p) => p.name === providerName)?.checkoutMode;
-				if (isNoPaymentRequired(data.provider as string) || mode === 'manual' || mode === 'none') {
+				if (isNoPaymentRequired(data.provider) || mode === 'manual' || mode === 'none') {
 					await placeOrder();
 				} else if (data.redirectUrl) {
 					window.location.href = data.redirectUrl;
@@ -361,7 +364,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 		router.push('/services');
 	}, [clearCart, router]);
 
-	const items = useMemo(() => (cart?.items ?? []) as CartItem[], [cart?.items]);
+	const items = useMemo(() => cart?.items ?? [], [cart?.items]);
 	const isExpired = timeRemaining !== null && timeRemaining <= 0;
 	const minutes = timeRemaining !== null ? Math.floor(timeRemaining / 60) : null;
 	const seconds = timeRemaining !== null ? timeRemaining % 60 : null;
