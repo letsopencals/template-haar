@@ -20,6 +20,7 @@ import type {
 	SubmitCheckout,
 	CartItem,
 	PaymentProviderName,
+	CheckoutQuestionAnswer,
 	CheckoutQuestionResponse as CheckoutQuestion,
 } from '@opencals/storefront-sdk';
 
@@ -259,10 +260,15 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 			setSubmitting(true);
 
 			try {
-				const answerArray = Object.entries(answers).map(([questionId, value]) => ({
-					questionId,
-					value,
-				}));
+				// The API wants `{ questionId, question, answer }`: `question` is the title the customer saw, kept with
+				// the booking even if the merchant edits the question later.
+				const answerArray: CheckoutQuestionAnswer[] = questions
+					.filter((q) => answers[q.id] !== undefined && answers[q.id] !== '')
+					.map((q) => ({
+						questionId: q.id,
+						question: q.translations?.[0]?.title ?? q.internalName,
+						answer: answers[q.id] as string,
+					}));
 
 				const res = await fetch('/api/checkout/save-answers', {
 					method: 'POST',
@@ -281,7 +287,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 				setSubmitting(false);
 			}
 		},
-		[answers, cartHeaders],
+		[answers, questions, cartHeaders],
 	);
 
 	/** POSTs a checkout call; waits out CHECKOUT_IN_PROGRESS, throws a CheckoutConflict on anything else. */
